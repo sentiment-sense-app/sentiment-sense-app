@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Create Survey{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <h1 class="h4 mb-3">Create Custom Survey</h1>
+        <form method="post" action="/admin/surveys/create">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+            <h2 class="h6">Custom Questions (optional)</h2>
+            <p class="text-muted small mb-2">
+                Upload a CSV (first column = question text) and/or add questions manually. They'll be cleaned up by the LLM and interleaved with adaptive LLM-generated questions to hit the per-survey cap.
+            </p>
+
+            <div class="mb-2">
+                <label for="csv_upload" class="form-label small mb-1">Upload CSV</label>
+                <input type="file" class="form-control form-control-sm" id="csv_upload" accept=".csv">
+            </div>
+
+            <div id="questions_list" class="mb-2"></div>
+
+            <button type="button" class="btn btn-outline-secondary btn-sm mb-4" id="add_question">+ Add question</button>
+
+            <hr>
+
+            <div class="mb-3">
+                <label for="focus_area" class="form-label">Focus Area (optional)</label>
+                <input type="text" class="form-control" id="focus_area" name="focus_area" placeholder="e.g., work-life balance, recent reorg">
+            </div>
+
+            <label class="form-label">Select Employees</label>
+            {% if employees %}
+            <div class="border rounded p-2 mb-3" style="max-height:300px;overflow-y:auto;">
+                <div class="form-check border-bottom pb-2 mb-2">
+                    <input class="form-check-input" type="checkbox" id="emp_select_all">
+                    <label class="form-check-label fw-semibold" for="emp_select_all">Select all ({{ employees|length }})</label>
+                </div>
+                {% for e in employees %}
+                <div class="form-check">
+                    <input class="form-check-input employee-checkbox" type="checkbox" name="employee_ids" value="{{ e.id }}" id="emp_{{ e.id }}">
+                    <label class="form-check-label" for="emp_{{ e.id }}">
+                        {{ e.name }} ({{ e.role or 'N/A' }} - {{ e.project or 'N/A' }})
+                    </label>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p>No employees found. <a href="/admin/employees/upload">Upload employees</a> first.</p>
+            {% endif %}
+
+            <button type="submit" class="btn btn-primary"{% if not employees %} disabled{% endif %}>Create Surveys</button>
+        </form>
+    </div>
+</div>
+
+<template id="question_row_template">
+    <div class="input-group input-group-sm mb-2 question-row">
+        <input type="text" name="question_texts" class="form-control" placeholder="Question text">
+        <button type="button" class="btn btn-outline-danger" data-remove aria-label="Remove">&times;</button>
+    </div>
+</template>
+
+<script>
+(function() {
+    const list = document.getElementById('questions_list');
+    const template = document.getElementById('question_row_template');
+
+    function addQuestion(text = '') {
+        const clone = template.content.cloneNode(true);
+        clone.querySelector('input').value = text;
+        list.appendChild(clone);
+    }
+
+    document.getElementById('add_question').addEventListener('click', () => addQuestion());
+
+    list.addEventListener('click', (e) => {
+        if (e.target.matches('[data-remove]')) {
+            e.target.closest('.question-row').remove();
+        }
+    });
+
+    const selectAll = document.getElementById('emp_select_all');
+    const empBoxes = document.querySelectorAll('.employee-checkbox');
+    if (selectAll) {
+        selectAll.addEventListener('change', () => {
+            empBoxes.forEach(cb => cb.checked = selectAll.checked);
+        });
+        empBoxes.forEach(cb => cb.addEventListener('change', () => {
+            const all = [...empBoxes].every(b => b.checked);
+            const none = [...empBoxes].every(b => !b.checked);
+            selectAll.checked = all;
+            selectAll.indeterminate = !all && !none;
+        }));
+    }
+
+    document.getElementById('csv_upload').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const text = await file.text();
+        const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        // Skip header row if first cell looks like "question"
+        const first = (lines[0] || '').split(',')[0].trim().toLowerCase().replace(/^"|"$/g, '');
+        const start = first === 'question' || first === 'questions' ? 1 : 0;
+        for (let i = start; i < lines.length; i++) {
+            const firstCol = lines[i].split(',')[0].trim().replace(/^"|"$/g, '');
+            if (firstCol) addQuestion(firstCol);
+        }
+        e.target.value = '';  // allow re-uploading same file
+    });
+})();
+</script>
+{% endblock %}

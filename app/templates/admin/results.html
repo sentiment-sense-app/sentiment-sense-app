@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Survey Results{% endblock %}
+{% block content %}
+{% set status_color = {'pending': 'warning', 'in_progress': 'info', 'completed': 'success', 'expired': 'danger'} %}
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h1 class="h4 mb-3">Survey Results</h1>
+        <p class="mb-1"><strong>Employee:</strong> {{ survey.employee.name }}</p>
+        <p class="mb-1"><strong>Role:</strong> {{ survey.employee.role or 'N/A' }}</p>
+        <p class="mb-1"><strong>Project:</strong> {{ survey.employee.project or 'N/A' }}</p>
+        <p class="mb-1"><strong>Status:</strong> <span class="badge text-bg-{{ status_color.get(survey.status, 'secondary') }}">{{ survey.status }}</span></p>
+        {% if survey.focus_area %}
+        <p class="mb-0"><strong>Focus Area:</strong> {{ survey.focus_area }}</p>
+        {% endif %}
+    </div>
+</div>
+
+{% if survey.questions %}
+<div class="card mb-3">
+    <div class="card-body">
+        <h2 class="h5">Responses</h2>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Question</th>
+                        <th>Type</th>
+                        <th>Answer</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for q in survey.questions %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ q.question_text }}</td>
+                        <td><span class="badge text-bg-secondary">{{ q.question_type }}</span></td>
+                        <td>{{ q.response.answer_text if q.response else '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card mb-3"><div class="card-body"><p class="mb-0">No questions generated yet. The employee has not started the survey.</p></div></div>
+{% endif %}
+
+<a href="/admin/dashboard">&larr; Back to Dashboard</a>
+{% endblock %}

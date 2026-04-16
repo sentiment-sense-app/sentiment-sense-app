@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Upload Employees{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <h1 class="h4 mb-3">Upload Employees</h1>
+        <p>Upload a CSV file with employee data. A survey will be auto-created for each new employee.</p>
+        <p><strong>Required columns:</strong> <code>name</code>, <code>email</code></p>
+        <p><strong>Optional columns:</strong> <code>role</code>, <code>project</code>, <code>experience_years</code></p>
+        <form method="post" action="/admin/employees/upload" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="mb-3">
+                <label for="file" class="form-label">CSV File</label>
+                <input type="file" class="form-control" id="file" name="file" accept=".csv" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Upload</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
