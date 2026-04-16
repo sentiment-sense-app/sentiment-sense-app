@@ -71,7 +71,7 @@ cli.py          admin creation CLI
 
 ## Deployment
 
-Docker Compose with Caddy (auto-HTTPS) in front of the app. SQLite persisted via a volume mount - no DB container.
+Docker Compose with Caddy (auto-HTTPS) in front of the app. SQLite persisted in a named Docker volume - no DB container.
 
 ### One-time VM setup
 
@@ -108,4 +108,6 @@ git pull && docker compose up -d --build
 
 ### Backup
 
-SQLite lives at `./data/survey.db` on the host - `scp` it anywhere.
+```bash
+docker compose cp app:/app/data/survey.db ./survey-$(date +%F).db
+```
