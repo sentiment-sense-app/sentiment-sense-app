@@ -8,6 +8,7 @@
 
         <form method="post" action="/survey/{{ session.token }}/respond">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="submitted_round" value="{{ session.current_round }}">
 
             {% for q in questions %}
             <div class="mb-4 pb-3 {% if not loop.last %}border-bottom{% endif %}">

@@ -92,6 +92,7 @@ git clone <repo-url> sentiment-sense && cd sentiment-sense
 cat > .env <<EOF
 SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_hex(32))')
 OPENROUTER_KEY=sk-or-...
+COOKIE_SECURE=1
 EOF
 
 docker compose up -d --build

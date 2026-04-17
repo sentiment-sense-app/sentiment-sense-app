@@ -1,11 +1,11 @@
 import json
 import math
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -30,7 +30,9 @@ async def _get_session(db: AsyncSession, token: str) -> SurveySession | None:
     session = result.scalar_one_or_none()
     if not session:
         return None
-    if session.status != SurveyStatus.EXPIRED.value and session.expires_at < datetime.utcnow():
+    # Columns are stored as naive UTC (SQLAlchemy DateTime w/o timezone=True strips tz on write).
+    now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
+    if session.status != SurveyStatus.EXPIRED.value and session.expires_at < now_naive:
         session.status = SurveyStatus.EXPIRED.value
         await db.commit()
     return session
@@ -119,6 +121,11 @@ async def respond(token: str, request: Request, db: AsyncSession = Depends(get_d
     if not verify_csrf_token(request, form.get("csrf_token")):
         return RedirectResponse(f"/survey/{token}", status_code=303)
 
+    try:
+        submitted_round = int(form.get("submitted_round", ""))
+    except (TypeError, ValueError):
+        return RedirectResponse(f"/survey/{token}", status_code=303)
+
     employee_dict = {
         "name": session.employee.name,
         "role": session.employee.role,
@@ -127,13 +134,39 @@ async def respond(token: str, request: Request, db: AsyncSession = Depends(get_d
     }
 
     if session.status == SurveyStatus.PENDING.value:
+        # Atomic start: a duplicate/late submission loses the race and redirects.
+        result = await db.execute(
+            update(SurveySession)
+            .where(
+                SurveySession.id == session.id,
+                SurveySession.status == SurveyStatus.PENDING.value,
+                SurveySession.current_round == submitted_round,
+            )
+            .values(status=SurveyStatus.IN_PROGRESS.value, current_round=1)
+        )
+        if result.rowcount == 0:
+            return RedirectResponse(f"/survey/{token}", status_code=303)
         session.status = SurveyStatus.IN_PROGRESS.value
         session.current_round = 1
         await _generate_next_batch(session, db, employee_dict, [])
         await db.commit()
         return RedirectResponse(f"/survey/{token}", status_code=303)
 
-    # Save answers for current unanswered questions
+    # Atomic round advance: pins the form to submitted_round; stale/duplicate forms fail here.
+    next_round = submitted_round + 1
+    result = await db.execute(
+        update(SurveySession)
+        .where(
+            SurveySession.id == session.id,
+            SurveySession.status == SurveyStatus.IN_PROGRESS.value,
+            SurveySession.current_round == submitted_round,
+        )
+        .values(current_round=next_round)
+    )
+    if result.rowcount == 0:
+        return RedirectResponse(f"/survey/{token}", status_code=303)
+    session.current_round = next_round
+
     unanswered = [q for q in session.questions if q.response is None]
     answered_now = {}
     for q in unanswered:
@@ -155,7 +188,6 @@ async def respond(token: str, request: Request, db: AsyncSession = Depends(get_d
             elif q.id in answered_now:
                 prior_qa.append({"question": q.question_text, "answer": answered_now[q.id], "type": q.question_type})
 
-        session.current_round += 1
         await _generate_next_batch(session, db, employee_dict, prior_qa)
 
     await db.commit()

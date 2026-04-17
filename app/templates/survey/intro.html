@@ -8,6 +8,7 @@
         <p>The survey adapts to your answers and takes a few minutes to complete.</p>
         <form method="post" action="/survey/{{ session.token }}/respond">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="submitted_round" value="0">
             <button type="submit" class="btn btn-primary">Begin Survey</button>
         </form>
     </div>
