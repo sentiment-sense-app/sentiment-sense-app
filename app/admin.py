@@ -153,6 +153,8 @@ async def upload_employees(
         return RedirectResponse("/admin/employees/upload", status_code=303)
 
     reader = csv.DictReader(io.StringIO(text))
+    if reader.fieldnames:
+        reader.fieldnames = [h.strip().lower() for h in reader.fieldnames]
     if not reader.fieldnames or not {"name", "email"}.issubset(set(reader.fieldnames)):
         flash(request, "CSV must have 'name' and 'email' columns.", "error")
         return RedirectResponse("/admin/employees/upload", status_code=303)
