@@ -19,7 +19,10 @@
 
             <div id="questions_list" class="mb-2"></div>
 
-            <button type="button" class="btn btn-outline-secondary btn-sm mb-4" id="add_question">+ Add question</button>
+            <div class="d-flex gap-2 mb-4">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="add_question">+ Add question</button>
+                <button type="button" class="btn btn-outline-danger btn-sm" id="clear_questions">Clear all</button>
+            </div>
 
             <hr>
 
@@ -72,6 +75,11 @@
     }
 
     document.getElementById('add_question').addEventListener('click', () => addQuestion());
+
+    document.getElementById('clear_questions').addEventListener('click', () => {
+        if (!list.children.length) return;
+        if (confirm('Clear all questions?')) list.replaceChildren();
+    });
 
     list.addEventListener('click', (e) => {
         if (e.target.matches('[data-remove]')) {
