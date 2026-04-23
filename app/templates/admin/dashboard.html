@@ -62,7 +62,14 @@
                         <td>
                             {% set u = usage_by_session.get(s.id) %}
                             {% if u %}
-                            <span class="text-muted" style="cursor:help;" title="Input tokens: {{ u.prompt_tokens }}&#10;Output tokens: {{ u.completion_tokens }}&#10;Total cost: ${{ '%.6f'|format(u.cost_usd) }}">&#9432;</span>
+                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-secondary lh-1"
+                                data-bs-toggle="popover"
+                                data-bs-trigger="focus"
+                                data-bs-placement="left"
+                                data-bs-html="true"
+                                data-bs-title="AI Usage"
+                                data-bs-content="Input tokens: <strong>{{ u.prompt_tokens }}</strong><br>Output tokens: <strong>{{ u.completion_tokens }}</strong><br>Cost: <strong>${{ '%.6f'|format(u.cost_usd) }}</strong>"
+                                aria-label="Show AI usage">&#9432;</button>
                             {% else %}
                             <span class="text-muted">—</span>
                             {% endif %}
@@ -129,6 +136,8 @@
 </div>
 
 <script>
+document.querySelectorAll('[data-bs-toggle="popover"]').forEach(el => new bootstrap.Popover(el));
+
 document.querySelectorAll('[data-copy]').forEach(btn => {
     btn.addEventListener('click', async () => {
         await navigator.clipboard.writeText(btn.dataset.copy);
