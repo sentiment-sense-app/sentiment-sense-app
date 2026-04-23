@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload
 from app.config import MAX_QUESTIONS, QUESTIONS_PER_ROUND
 from app.core import render, verify_csrf_token
 from app.database import get_db
-from app.models import Question, Response, SurveySession, SurveyStatus
+from app.models import AIUsage, Question, Response, SurveySession, SurveyStatus
 from app.services.ai import generate_questions
 
 router = APIRouter()
@@ -67,13 +67,24 @@ async def _generate_next_batch(
 
     llm_questions: list[dict] = []
     if llm_count > 0:
-        llm_questions = await generate_questions(
+        llm_questions, usage = await generate_questions(
             employee_dict,
             prior_qa,
             session.focus_area,
             llm_count,
             customs_in_round=customs,
         )
+        if usage["prompt_tokens"] or usage["completion_tokens"] or usage["cost_usd"]:
+            db.add(
+                AIUsage(
+                    session_id=session.id,
+                    call_type="generate_questions",
+                    model=usage["model"],
+                    prompt_tokens=usage["prompt_tokens"],
+                    completion_tokens=usage["completion_tokens"],
+                    cost_usd=usage["cost_usd"],
+                )
+            )
 
     # Mark origin, combine, and shuffle within the round so customs aren't clumped.
     batch = [dict(q, _is_custom=True) for q in customs] + [dict(q, _is_custom=False) for q in llm_questions]

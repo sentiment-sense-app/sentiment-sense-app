@@ -87,3 +87,20 @@ class Response(Base):
 
     question: Mapped["Question"] = relationship(back_populates="response")
     session: Mapped["SurveySession"] = relationship(back_populates="responses")
+
+
+class AIUsage(Base):
+    __tablename__ = "ai_usage"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[int | None] = mapped_column(
+        ForeignKey("survey_sessions.id"), index=True, nullable=True
+    )
+    call_type: Mapped[str] = mapped_column(String(50))
+    model: Mapped[str] = mapped_column(String(100))
+    prompt_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    completion_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    cost_usd: Mapped[float] = mapped_column(default=0.0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )

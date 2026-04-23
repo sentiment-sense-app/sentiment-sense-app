@@ -40,6 +40,7 @@
                         <th>Status</th>
                         <th>Survey Link</th>
                         <th>Created</th>
+                        <th>Usage</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -58,6 +59,14 @@
                             </div>
                         </td>
                         <td>{{ s.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            {% set u = usage_by_session.get(s.id) %}
+                            {% if u %}
+                            <span class="text-muted" style="cursor:help;" title="Input tokens: {{ u.prompt_tokens }}&#10;Output tokens: {{ u.completion_tokens }}&#10;Total cost: ${{ '%.4f'|format(u.cost_usd) }}">&#9432;</span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
                         <td>
                             <div class="d-flex align-items-center gap-2">
                                 <a href="/admin/surveys/{{ s.id }}/results">Results</a>

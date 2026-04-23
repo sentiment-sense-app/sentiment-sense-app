@@ -37,6 +37,22 @@ def _strip_fences(content: str) -> str:
     return content.strip()
 
 
+def _extract_usage(response) -> dict:
+    usage = getattr(response, "usage", None)
+    if not usage:
+        return {"prompt_tokens": 0, "completion_tokens": 0, "cost_usd": 0.0, "model": AI_MODEL}
+    raw = usage.model_dump() if hasattr(usage, "model_dump") else dict(usage)
+    return {
+        "prompt_tokens": int(raw.get("prompt_tokens") or 0),
+        "completion_tokens": int(raw.get("completion_tokens") or 0),
+        "cost_usd": float(raw.get("cost") or 0),
+        "model": getattr(response, "model", None) or AI_MODEL,
+    }
+
+
+_EMPTY_USAGE = {"prompt_tokens": 0, "completion_tokens": 0, "cost_usd": 0.0, "model": AI_MODEL}
+
+
 SYSTEM_PROMPT = """You are an expert organizational psychologist designing employee surveys to assess sentiment and identify attrition risk.
 
 Generate questions tailored to the employee's profile. Mix question types:
@@ -56,7 +72,7 @@ async def generate_questions(
     focus_area: str | None,
     remaining: int,
     customs_in_round: list[dict] | None = None,
-) -> list[dict]:
+) -> tuple[list[dict], dict]:
     batch_size = min(QUESTIONS_PER_ROUND, remaining)
 
     parts = [
@@ -89,14 +105,14 @@ async def generate_questions(
             response_format={"type": "json_object"},
         )
         parsed = LLMResponse.model_validate_json(_strip_fences(response.choices[0].message.content))
-        return [q.model_dump(mode="json") for q in parsed.questions[:batch_size]]
+        return [q.model_dump(mode="json") for q in parsed.questions[:batch_size]], _extract_usage(response)
     except Exception:
         logger.exception("LLM question generation failed; using fallback questions")
         return [
             {"text": "How would you rate your overall job satisfaction?", "type": "scale", "options": None},
             {"text": "What aspects of your work do you find most fulfilling?", "type": "text", "options": None},
             {"text": "How supported do you feel by your direct manager?", "type": "scale", "options": None},
-        ][:batch_size]
+        ][:batch_size], dict(_EMPTY_USAGE)
 
 
 CLEANUP_PROMPT = """You are formatting survey questions for an employee sentiment survey.
@@ -112,9 +128,9 @@ Return JSON: {"questions": [{"text": "...", "type": "text|scale|multiple_choice"
 Return questions in the same order as the input."""
 
 
-async def cleanup_custom_questions(plain_texts: list[str]) -> list[dict]:
+async def cleanup_custom_questions(plain_texts: list[str]) -> tuple[list[dict], dict]:
     if not plain_texts:
-        return []
+        return [], dict(_EMPTY_USAGE)
     try:
         response = await client.chat.completions.create(
             model=AI_MODEL,
@@ -125,7 +141,7 @@ async def cleanup_custom_questions(plain_texts: list[str]) -> list[dict]:
             response_format={"type": "json_object"},
         )
         parsed = LLMResponse.model_validate_json(_strip_fences(response.choices[0].message.content))
-        return [q.model_dump(mode="json") for q in parsed.questions]
+        return [q.model_dump(mode="json") for q in parsed.questions], _extract_usage(response)
     except Exception:
         logger.exception("Cleanup failed; treating all as plain text")
-        return [{"text": t, "type": "text", "options": None} for t in plain_texts]
+        return [{"text": t, "type": "text", "options": None} for t in plain_texts], dict(_EMPTY_USAGE)

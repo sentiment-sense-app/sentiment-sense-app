@@ -14,7 +14,7 @@ from sqlalchemy.orm import selectinload
 from app.config import SURVEY_EXPIRY_DAYS
 from app.core import flash, limiter, render, require_admin, verify_csrf_token, verify_password
 from app.database import get_db
-from app.models import Admin, Employee, Question, Response, SurveySession, SurveyStatus
+from app.models import AIUsage, Admin, Employee, Question, Response, SurveySession, SurveyStatus
 from app.services.ai import cleanup_custom_questions
 
 router = APIRouter()
@@ -56,6 +56,29 @@ async def logout(request: Request):
 
 
 PAGE_SIZE = 50
+
+
+async def _usage_totals(db: AsyncSession, session_ids: list[int]) -> dict[int, dict]:
+    if not session_ids:
+        return {}
+    rows = (await db.execute(
+        select(
+            AIUsage.session_id,
+            func.sum(AIUsage.prompt_tokens),
+            func.sum(AIUsage.completion_tokens),
+            func.sum(AIUsage.cost_usd),
+        )
+        .where(AIUsage.session_id.in_(session_ids))
+        .group_by(AIUsage.session_id)
+    )).all()
+    return {
+        sid: {
+            "prompt_tokens": int(p or 0),
+            "completion_tokens": int(c or 0),
+            "cost_usd": float(cost or 0),
+        }
+        for sid, p, c, cost in rows
+    }
 
 
 @router.get("/dashboard")
@@ -102,6 +125,8 @@ async def dashboard(
         )
     ).scalars().all()
 
+    usage_by_session = await _usage_totals(db, [s.id for s in surveys])
+
     def total_pages(count: int) -> int:
         return max(1, (count + PAGE_SIZE - 1) // PAGE_SIZE)
 
@@ -118,6 +143,7 @@ async def dashboard(
         surveys=surveys,
         stats=stats,
         pagination=pagination,
+        usage_by_session=usage_by_session,
     )
 
 
@@ -282,22 +308,42 @@ async def create_survey(
         return RedirectResponse("/admin/surveys/create", status_code=303)
 
     custom_json: str | None = None
+    cleanup_usage: dict | None = None
     if question_texts:
-        cleaned = await cleanup_custom_questions(question_texts)
+        cleaned, cleanup_usage = await cleanup_custom_questions(question_texts)
         random.shuffle(cleaned)
         custom_json = json.dumps(cleaned)
 
+    new_sessions = []
     for eid in to_create:
-        db.add(
-            SurveySession(
-                employee_id=eid,
-                token=str(uuid.uuid4()),
-                status=SurveyStatus.PENDING.value,
-                focus_area=focus_area or None,
-                custom_questions=custom_json,
-                expires_at=datetime.now(timezone.utc) + timedelta(days=SURVEY_EXPIRY_DAYS),
-            )
+        s = SurveySession(
+            employee_id=eid,
+            token=str(uuid.uuid4()),
+            status=SurveyStatus.PENDING.value,
+            focus_area=focus_area or None,
+            custom_questions=custom_json,
+            expires_at=datetime.now(timezone.utc) + timedelta(days=SURVEY_EXPIRY_DAYS),
         )
+        db.add(s)
+        new_sessions.append(s)
+
+    if cleanup_usage and (cleanup_usage["prompt_tokens"] or cleanup_usage["completion_tokens"] or cleanup_usage["cost_usd"]):
+        await db.flush()  # populate session ids
+        n = len(new_sessions)
+        per_prompt = cleanup_usage["prompt_tokens"] // n
+        per_completion = cleanup_usage["completion_tokens"] // n
+        per_cost = cleanup_usage["cost_usd"] / n
+        for s in new_sessions:
+            db.add(
+                AIUsage(
+                    session_id=s.id,
+                    call_type="cleanup_custom_questions",
+                    model=cleanup_usage["model"],
+                    prompt_tokens=per_prompt,
+                    completion_tokens=per_completion,
+                    cost_usd=per_cost,
+                )
+            )
 
     await db.commit()
     msg = f"Created {len(to_create)} survey(s)"
@@ -329,7 +375,8 @@ async def survey_results(
         flash(request, "Survey not found.", "error")
         return RedirectResponse("/admin/dashboard", status_code=303)
 
-    return render(request, "admin/results.html", survey=survey)
+    usage = (await _usage_totals(db, [survey.id])).get(survey.id)
+    return render(request, "admin/results.html", survey=survey, usage=usage)
 
 
 @router.post("/employees/{employee_id}/delete")
@@ -354,6 +401,7 @@ async def delete_employee(
     session_ids = select(SurveySession.id).where(SurveySession.employee_id == employee_id)
     await db.execute(delete(Response).where(Response.session_id.in_(session_ids)))
     await db.execute(delete(Question).where(Question.session_id.in_(session_ids)))
+    await db.execute(delete(AIUsage).where(AIUsage.session_id.in_(session_ids)))
     await db.execute(delete(SurveySession).where(SurveySession.employee_id == employee_id))
     await db.execute(delete(Employee).where(Employee.id == employee_id))
     await db.commit()
