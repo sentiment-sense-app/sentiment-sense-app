@@ -87,6 +87,7 @@
                         <th>Role</th>
                         <th>Project</th>
                         <th>Experience</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -97,6 +98,12 @@
                         <td>{{ e.role or '-' }}</td>
                         <td>{{ e.project or '-' }}</td>
                         <td>{{ (e.experience_years ~ ' yrs') if e.experience_years else '-' }}</td>
+                        <td>
+                            <form action="/admin/employees/{{ e.id }}/delete" method="post" class="m-0" onsubmit="return confirm('Delete {{ e.name }}? All their surveys and responses will be permanently removed.');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                            </form>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>

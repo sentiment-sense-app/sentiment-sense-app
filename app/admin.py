@@ -315,6 +315,36 @@ async def survey_results(
     return render(request, "admin/results.html", survey=survey)
 
 
+@router.post("/employees/{employee_id}/delete")
+async def delete_employee(
+    employee_id: int,
+    request: Request,
+    admin: Admin = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+    csrf_token: str = Form(...),
+):
+    if not verify_csrf_token(request, csrf_token):
+        flash(request, "Invalid request.", "error")
+        return RedirectResponse("/admin/dashboard#employees", status_code=303)
+
+    employee = (
+        await db.execute(select(Employee).where(Employee.id == employee_id))
+    ).scalar_one_or_none()
+    if not employee:
+        flash(request, "Employee not found.", "error")
+        return RedirectResponse("/admin/dashboard#employees", status_code=303)
+
+    session_ids = select(SurveySession.id).where(SurveySession.employee_id == employee_id)
+    await db.execute(delete(Response).where(Response.session_id.in_(session_ids)))
+    await db.execute(delete(Question).where(Question.session_id.in_(session_ids)))
+    await db.execute(delete(SurveySession).where(SurveySession.employee_id == employee_id))
+    await db.execute(delete(Employee).where(Employee.id == employee_id))
+    await db.commit()
+
+    flash(request, f"Deleted employee {employee.name} and all related surveys.", "success")
+    return RedirectResponse("/admin/dashboard#employees", status_code=303)
+
+
 @router.post("/surveys/{survey_id}/reset")
 async def reset_survey(
     survey_id: int,
