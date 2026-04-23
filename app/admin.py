@@ -94,8 +94,9 @@ async def dashboard(
     surveys = (
         await db.execute(
             select(SurveySession)
+            .join(SurveySession.employee)
             .options(selectinload(SurveySession.employee))
-            .order_by(SurveySession.created_at.desc())
+            .order_by(Employee.name.asc(), SurveySession.created_at.desc())
             .limit(PAGE_SIZE)
             .offset((surveys_page - 1) * PAGE_SIZE)
         )
