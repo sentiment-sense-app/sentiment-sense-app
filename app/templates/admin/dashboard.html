@@ -136,7 +136,9 @@
 </div>
 
 <script>
-document.querySelectorAll('[data-bs-toggle="popover"]').forEach(el => new bootstrap.Popover(el));
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-bs-toggle="popover"]').forEach(el => new bootstrap.Popover(el));
+});
 
 document.querySelectorAll('[data-copy]').forEach(btn => {
     btn.addEventListener('click', async () => {
