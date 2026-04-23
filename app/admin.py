@@ -210,6 +210,19 @@ async def create_survey_page(
     return render(request, "admin/create_survey.html", employees=employees)
 
 
+def _normalize_texts(texts: list[str]) -> frozenset[str]:
+    return frozenset(t.strip().lower() for t in texts if t and t.strip())
+
+
+def _stored_text_set(custom_json: str | None) -> frozenset[str]:
+    if not custom_json:
+        return frozenset()
+    try:
+        return _normalize_texts([q.get("text", "") for q in json.loads(custom_json)])
+    except (json.JSONDecodeError, AttributeError, TypeError):
+        return frozenset()
+
+
 @router.post("/surveys/create")
 async def create_survey(
     request: Request,
@@ -221,12 +234,34 @@ async def create_survey(
         flash(request, "Invalid request.", "error")
         return RedirectResponse("/admin/surveys/create", status_code=303)
 
-    employee_ids = form.getlist("employee_ids")
+    employee_ids = [int(e) for e in form.getlist("employee_ids")]
     focus_area = form.get("focus_area", "").strip()
     question_texts = [t.strip() for t in form.getlist("question_texts") if t.strip()]
 
     if not employee_ids:
         flash(request, "Select at least one employee.", "error")
+        return RedirectResponse("/admin/surveys/create", status_code=303)
+
+    new_focus = focus_area or ""
+    new_text_set = _normalize_texts(question_texts)
+
+    existing = (await db.execute(
+        select(SurveySession.employee_id, SurveySession.focus_area, SurveySession.custom_questions)
+        .where(
+            SurveySession.employee_id.in_(employee_ids),
+            SurveySession.status == SurveyStatus.PENDING.value,
+        )
+    )).all()
+
+    dup_ids = {
+        eid for eid, focus, custom in existing
+        if (focus or "") == new_focus and _stored_text_set(custom) == new_text_set
+    }
+    to_create = [eid for eid in employee_ids if eid not in dup_ids]
+    skipped = len(employee_ids) - len(to_create)
+
+    if not to_create:
+        flash(request, f"All {skipped} selected employee(s) already have an identical pending survey.", "error")
         return RedirectResponse("/admin/surveys/create", status_code=303)
 
     custom_json: str | None = None
@@ -235,10 +270,10 @@ async def create_survey(
         random.shuffle(cleaned)
         custom_json = json.dumps(cleaned)
 
-    for eid in employee_ids:
+    for eid in to_create:
         db.add(
             SurveySession(
-                employee_id=int(eid),
+                employee_id=eid,
                 token=str(uuid.uuid4()),
                 status=SurveyStatus.PENDING.value,
                 focus_area=focus_area or None,
@@ -248,9 +283,11 @@ async def create_survey(
         )
 
     await db.commit()
-    msg = f"Created {len(employee_ids)} survey(s)"
+    msg = f"Created {len(to_create)} survey(s)"
     if question_texts:
         msg += f" with {len(question_texts)} custom question(s)"
+    if skipped:
+        msg += f". Skipped {skipped} (identical pending survey already exists)"
     flash(request, msg + ".", "success")
     return RedirectResponse("/admin/dashboard", status_code=303)
 
