@@ -160,6 +160,7 @@ async def upload_employees(
         return RedirectResponse("/admin/employees/upload", status_code=303)
 
     created = 0
+    updated = 0
     skipped = 0
 
     for row in reader:
@@ -170,18 +171,28 @@ async def upload_employees(
             skipped += 1
             continue
 
-        existing = await db.execute(select(Employee).where(Employee.email == email))
-        if existing.scalar_one_or_none():
-            skipped += 1
+        exp = row.get("experience_years", "").strip()
+        project = row.get("project", "").strip() or None
+        experience_years = int(exp) if exp.isdigit() else None
+
+        existing = (
+            await db.execute(select(Employee).where(Employee.email == email))
+        ).scalar_one_or_none()
+
+        if existing:
+            existing.name = name
+            existing.role = role
+            existing.project = project
+            existing.experience_years = experience_years
+            updated += 1
             continue
 
-        exp = row.get("experience_years", "").strip()
         employee = Employee(
             name=name,
             email=email,
             role=role,
-            project=row.get("project", "").strip() or None,
-            experience_years=int(exp) if exp.isdigit() else None,
+            project=project,
+            experience_years=experience_years,
         )
         db.add(employee)
         await db.flush()
@@ -197,7 +208,11 @@ async def upload_employees(
         created += 1
 
     await db.commit()
-    flash(request, f"Added {created} employees with surveys. Skipped {skipped} (duplicate/invalid).", "success")
+    flash(
+        request,
+        f"Added {created} new employees (with surveys). Updated {updated} existing. Skipped {skipped} (invalid rows).",
+        "success",
+    )
     return RedirectResponse("/admin/dashboard", status_code=303)
 
 
