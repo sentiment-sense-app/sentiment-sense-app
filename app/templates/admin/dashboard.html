@@ -62,7 +62,7 @@
                         <td>
                             {% set u = usage_by_session.get(s.id) %}
                             {% if u %}
-                            <span class="text-muted" style="cursor:help;" title="Input tokens: {{ u.prompt_tokens }}&#10;Output tokens: {{ u.completion_tokens }}&#10;Total cost: ${{ '%.4f'|format(u.cost_usd) }}">&#9432;</span>
+                            <span class="text-muted" style="cursor:help;" title="Input tokens: {{ u.prompt_tokens }}&#10;Output tokens: {{ u.completion_tokens }}&#10;Total cost: ${{ '%.6f'|format(u.cost_usd) }}">&#9432;</span>
                             {% else %}
                             <span class="text-muted">—</span>
                             {% endif %}

@@ -18,7 +18,7 @@
             <strong>AI Usage:</strong>
             Input tokens: {{ usage.prompt_tokens }} ·
             Output tokens: {{ usage.completion_tokens }} ·
-            Cost: ${{ '%.4f'|format(usage.cost_usd) }}
+            Cost: ${{ '%.6f'|format(usage.cost_usd) }}
         </p>
         {% endif %}
     </div>
