@@ -36,7 +36,7 @@ Open http://localhost:8000.
 
 ## Flow
 
-1. Admin logs in, uploads employee CSV (required: `name`, `email`; optional: `role`, `project`, `experience_years`).
+1. Admin logs in, uploads employee CSV (required: `name`, `email`, `role`; optional: `project`, `experience_years`).
 2. A survey session + single-use UUID link is auto-created per employee.
 3. Employee opens link → receives AI-generated questions tailored to their profile.
 4. On submit, the system feeds prior Q&A back to the LLM and generates the next round. Max 8 questions.

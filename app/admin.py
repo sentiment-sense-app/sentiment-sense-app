@@ -155,8 +155,8 @@ async def upload_employees(
     reader = csv.DictReader(io.StringIO(text))
     if reader.fieldnames:
         reader.fieldnames = [h.strip().lower() for h in reader.fieldnames]
-    if not reader.fieldnames or not {"name", "email"}.issubset(set(reader.fieldnames)):
-        flash(request, "CSV must have 'name' and 'email' columns.", "error")
+    if not reader.fieldnames or not {"name", "email", "role"}.issubset(set(reader.fieldnames)):
+        flash(request, "CSV must have 'name', 'email', and 'role' columns.", "error")
         return RedirectResponse("/admin/employees/upload", status_code=303)
 
     created = 0
@@ -165,7 +165,8 @@ async def upload_employees(
     for row in reader:
         name = row.get("name", "").strip()
         email = row.get("email", "").strip()
-        if not name or not email:
+        role = row.get("role", "").strip()
+        if not name or not email or not role:
             skipped += 1
             continue
 
@@ -178,7 +179,7 @@ async def upload_employees(
         employee = Employee(
             name=name,
             email=email,
-            role=row.get("role", "").strip() or None,
+            role=role,
             project=row.get("project", "").strip() or None,
             experience_years=int(exp) if exp.isdigit() else None,
         )
