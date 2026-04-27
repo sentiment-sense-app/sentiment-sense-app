@@ -17,12 +17,14 @@ cp .env .env.local  # optional; or edit .env directly
 Fill in `.env`:
 
 ```env
-SECRET_KEY=...                 # python -c 'import secrets; print(secrets.token_hex(32))'
+SECRET_KEY=...                       # python -c 'import secrets; print(secrets.token_hex(32))'
 OPENROUTER_KEY=sk-or-...
+OPENROUTER_MODEL=deepseek/deepseek-v4-flash   # optional, defaults to deepseek/deepseek-v4-pro
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=admin123
-TELEGRAM_BOT_TOKEN=            # from @BotFather
-TELEGRAM_BOT_USERNAME=         # bot's @username, no @
+TELEGRAM_BOT_TOKEN=                  # from @BotFather
+TELEGRAM_BOT_USERNAME=               # bot's @username, no @
+TELEGRAM_POLLING_ENABLED=true
 ```
 
 Run:
@@ -35,12 +37,12 @@ Open http://localhost:8000. Admin user is seeded from `ADMIN_EMAIL` / `ADMIN_PAS
 
 ## Flow
 
-1. Admin logs in, imports employees from CSV (required: `name`, `email`, `department`, `manager`, `project`, `role`, `phone`).
+1. Admin logs in, imports employees from CSV (required: `name`, `email`, `department`, `manager`, `project`, `role`, `phone`). A ready-to-use `demo_employees.csv` ships in the repo for quick testing.
 2. Each employee gets a personalized Telegram deep link `https://t.me/<bot>?start=<token>`.
-3. Admin sends the link to the employee out-of-band. Employee opens it and presses Start; the bot stores their `chat_id`.
-4. Admin clicks **Send check-in**. Bot DMs the employee.
-5. Employee replies. The LLM decides the next question or wraps up the conversation. When done, an HR-facing Markdown report is saved.
-6. Admin reviews transcripts, marks reports `open` / `reviewed` / `resolved` / `dismissed`, and exports CSV.
+3. Admin sends the link to the employee out-of-band. Employee opens it and presses Start; the bot stores their `chat_id` and the check-in begins automatically.
+4. Employee replies. The LLM decides the next question (capped at 3) or wraps up the conversation. When done, an HR-facing Markdown report is saved.
+5. **Send check-in** on the admin UI re-starts a fresh check-in at any time, cancelling any in-progress conversation.
+6. Admin reviews reports on the dashboard, marks them `open` / `reviewed` / `resolved` / `dismissed`, and exports CSV.
 
 ## Bot Commands
 
@@ -66,7 +68,7 @@ app/
   telegram_polling.py  long-poll loop run from FastAPI lifespan
   reports.py           CSV export + status helpers
   routes/              auth / dashboard / employee / checkin / report
-  templates/           Jinja2 pages
+  templates/           Jinja2 pages (dashboard hosts the paginated reports table)
 ```
 
 ## Deployment
