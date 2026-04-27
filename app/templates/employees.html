@@ -55,10 +55,6 @@
               <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
               <button type="submit" class="btn btn-sm btn-success">Send check-in</button>
             </form>
-            <form method="post" action="/admin/employees/{{ employee.id }}/reset" class="d-inline">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-              <button type="submit" class="btn btn-sm btn-outline-danger">Reset</button>
-            </form>
             </div>
           </td>
         </tr>
