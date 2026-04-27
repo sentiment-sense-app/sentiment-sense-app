@@ -48,12 +48,12 @@ async def polling_loop(stop_event: asyncio.Event) -> None:
                 updates = await telegram.get_updates(offset=offset, timeout=25)
                 for update in updates:
                     update_id = update.get("update_id")
+                    if isinstance(update_id, int):
+                        await set_last_update_id(db, update_id)
                     try:
                         await process_telegram_update(db, telegram, update)
                     except Exception:
                         logger.exception("Failed to process Telegram update %s", update_id)
-                    if isinstance(update_id, int):
-                        await set_last_update_id(db, update_id)
         except TelegramAPIError:
             logger.exception("Telegram polling request failed")
             await asyncio.sleep(5)
