@@ -209,6 +209,7 @@ async def handle_employee_message(
     message_id: int | None,
     raw_payload: dict[str, Any],
 ) -> None:
+    logger.info("Employee msg from %s (session=%d): %r", employee.name, session.id, text[:80])
     await store_message(db, employee, session, "employee", text, update_id, message_id, raw_payload)
     await db.commit()
 
@@ -229,6 +230,7 @@ async def handle_employee_message(
     reply = decision["reply_to_employee"].strip()
     await store_message(db, employee, session, "bot", reply)
     if decision["conversation_done"]:
+        logger.info("Check-in complete for %s (session=%d), report saved", employee.name, session.id)
         session.status = "completed"
         session.completed_at = now_utc()
         db.add(session)
@@ -242,6 +244,7 @@ async def handle_employee_message(
         )
     await db.commit()
     await telegram.send_message(employee.telegram_chat_id, reply)
+    logger.info("Bot reply sent to %s: %r", employee.name, reply[:80])
 
 
 async def process_telegram_update(db: AsyncSession, telegram: TelegramClient, update: dict[str, Any]) -> None:
