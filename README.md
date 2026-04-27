@@ -39,16 +39,16 @@ Open http://localhost:8000. Admin user is seeded from `ADMIN_EMAIL` / `ADMIN_PAS
 
 1. Admin logs in, imports employees from CSV (required: `name`, `email`, `department`, `manager`, `project`, `role`, `phone`). A ready-to-use `demo_employees.csv` ships in the repo for quick testing.
 2. Each employee gets a personalized Telegram deep link `https://t.me/<bot>?start=<token>`.
-3. Admin sends the link to the employee out-of-band. Employee opens it and presses Start; the bot stores their `chat_id` and the check-in begins automatically.
-4. Employee replies. The LLM decides the next question (capped at 3) or wraps up the conversation. When done, an HR-facing Markdown report is saved.
-5. **Send check-in** on the admin UI re-starts a fresh check-in at any time, cancelling any in-progress conversation.
-6. Admin reviews reports on the dashboard, marks them `open` / `reviewed` / `resolved` / `dismissed`, and exports CSV.
+3. Admin sends the link to the employee out-of-band. Employee opens it and presses Start; the bot stores their `chat_id` and an initial survey begins automatically (3 AI-generated questions).
+4. Admin can also click **Send survey** on the admin UI at any time. The form lets them set total questions, % of questions to draw from a custom list (manual textarea or CSV upload), and the bot weaves them in. Sending cancels any in-progress survey for that employee.
+5. Employee replies on Telegram. The LLM asks follow-ups up to the question budget; the bot allows up to 20% extra turns for tactful follow-ups before force-finalizing. When the survey ends, an HR-facing Markdown report is saved and a "survey complete" message is sent to the employee.
+6. Admin reviews surveys on the dashboard (grouped by employee), marks them `open` / `reviewed` / `resolved` / `dismissed`, and exports CSV.
 
 ## Bot Commands
 
 - `/start <token>` — onboarding (issued via deep link)
-- `/restart` or `/reset` — start a fresh check-in (testing)
-- `/cancel` — cancel the active check-in
+- `/restart` or `/reset` — start a fresh survey (testing)
+- `/cancel` — cancel the active survey
 - `/help` — usage hint
 
 ## Layout
@@ -63,12 +63,12 @@ app/
   web.py               Jinja2 templates + filters
   csv_import.py        employee CSV ingest
   llm.py               OpenRouter call + JSON contract
-  bot_logic.py         Telegram update handling, check-in lifecycle
+  bot_logic.py         Telegram update handling, survey lifecycle, custom-question selection
   telegram_client.py   thin httpx wrapper around Bot API
   telegram_polling.py  long-poll loop run from FastAPI lifespan
   reports.py           CSV export + status helpers
-  routes/              auth / dashboard / employee / checkin / report
-  templates/           Jinja2 pages (dashboard hosts the paginated reports table)
+  routes/              auth / dashboard / employee / survey / survey_admin
+  templates/           Jinja2 pages (dashboard groups surveys per employee)
 ```
 
 ## Deployment
