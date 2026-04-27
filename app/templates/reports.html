@@ -35,7 +35,6 @@
           <th>Manager</th>
           <th>Project</th>
           <th>Role</th>
-          <th>Report preview</th>
           <th>Status</th>
           <th>Created</th>
           <th>Actions</th>
@@ -50,13 +49,12 @@
           <td>{{ report.employee.manager }}</td>
           <td>{{ report.employee.project }}</td>
           <td>{{ report.employee.role }}</td>
-          <td>{{ report.report_markdown[:140] }}{% if report.report_markdown|length > 140 %}...{% endif %}</td>
           <td><span class="badge text-bg-secondary">{{ report.status|report_status_label }}</span></td>
           <td>{{ report.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
           <td><a class="btn btn-sm btn-outline-secondary" href="/admin/reports/{{ report.id }}">View</a></td>
         </tr>
         {% else %}
-        <tr><td colspan="10" class="text-center text-secondary py-4">No reports generated yet.</td></tr>
+        <tr><td colspan="9" class="text-center text-secondary py-4">No reports generated yet.</td></tr>
         {% endfor %}
       </tbody>
     </table>
