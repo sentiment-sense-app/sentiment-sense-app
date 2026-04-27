@@ -26,9 +26,9 @@ async def reports(
         query = query.where(Report.status == selected_status)
     reports_list = (await db.execute(query)).scalars().all()
     return templates.TemplateResponse(
+        request,
         "reports.html",
         {
-            "request": request,
             "admin": session.admin,
             "csrf_token": session.csrf_token,
             "reports": reports_list,
@@ -62,16 +62,16 @@ async def report_detail(
 ) -> HTMLResponse:
     report = await db.get(Report, report_id)
     if not report:
-        return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
+        return templates.TemplateResponse(request, "404.html", status_code=404)
     messages = (
         await db.execute(
             select(Message).where(Message.session_id == report.session_id).order_by(Message.created_at.asc())
         )
     ).scalars().all()
     return templates.TemplateResponse(
+        request,
         "report_detail.html",
         {
-            "request": request,
             "admin": session.admin,
             "csrf_token": session.csrf_token,
             "report": report,

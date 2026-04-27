@@ -22,7 +22,7 @@ router = APIRouter()
 
 @router.get("/login", response_class=HTMLResponse)
 async def login_form(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse(request, "login.html")
 
 
 @router.post("/login", response_model=None)
@@ -35,8 +35,9 @@ async def login(
     admin = (await db.execute(select(Admin).where(Admin.email == email.strip().lower()))).scalar_one_or_none()
     if not admin or not admin.is_active or not verify_password(password, admin.password_hash):
         return templates.TemplateResponse(
+            request,
             "login.html",
-            {"request": request, "error": "Invalid email or password."},
+            {"error": "Invalid email or password."},
             status_code=400,
         )
 

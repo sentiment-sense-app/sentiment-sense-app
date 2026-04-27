@@ -34,9 +34,9 @@ async def dashboard(
         await db.execute(select(Report).order_by(Report.created_at.desc()).limit(8))
     ).scalars().all()
     return templates.TemplateResponse(
+        request,
         "dashboard.html",
         {
-            "request": request,
             "admin": session.admin,
             "csrf_token": session.csrf_token,
             "stats": stats,

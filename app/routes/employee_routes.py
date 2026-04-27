@@ -60,9 +60,9 @@ async def employees(
     rows = [await employee_view_model(db, employee) for employee in employees_list]
     await db.commit()
     return templates.TemplateResponse(
+        request,
         "employees.html",
         {
-            "request": request,
             "admin": session.admin,
             "csrf_token": session.csrf_token,
             "rows": rows,
@@ -76,8 +76,9 @@ async def import_form(
     session: AdminSession = Depends(require_admin_session),
 ) -> HTMLResponse:
     return templates.TemplateResponse(
+        request,
         "import_employees.html",
-        {"request": request, "admin": session.admin, "csrf_token": session.csrf_token},
+        {"admin": session.admin, "csrf_token": session.csrf_token},
     )
 
 
@@ -93,9 +94,9 @@ async def import_employees(
     content = await file.read()
     result = await import_employees_from_csv(db, content)
     return templates.TemplateResponse(
+        request,
         "import_employees.html",
         {
-            "request": request,
             "admin": session.admin,
             "csrf_token": session.csrf_token,
             "result": result,
@@ -112,7 +113,7 @@ async def employee_detail(
 ) -> HTMLResponse:
     employee = await db.get(Employee, employee_id)
     if not employee:
-        return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
+        return templates.TemplateResponse(request, "404.html", status_code=404)
     token = await ensure_onboarding_token(db, employee)
     latest_session = await latest_session_for_employee(db, employee.id)
     messages: list[Message] = []
@@ -130,9 +131,9 @@ async def employee_detail(
     label = await checkin_label(db, employee.id)
     await db.commit()
     return templates.TemplateResponse(
+        request,
         "employee_detail.html",
         {
-            "request": request,
             "admin": session.admin,
             "csrf_token": session.csrf_token,
             "employee": employee,
