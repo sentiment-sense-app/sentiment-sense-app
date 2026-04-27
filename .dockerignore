@@ -2,8 +2,8 @@
 __pycache__
 *.pyc
 *.pyo
-survey.db
-survey.db-journal
+app.db
+app.db-journal
 data/
 .git
 .gitignore

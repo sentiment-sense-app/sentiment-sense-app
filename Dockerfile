@@ -11,7 +11,6 @@ RUN uv sync --frozen --no-install-project --no-dev
 
 # Copy application code
 COPY app ./app
-COPY cli.py ./
 
 # Install the project itself
 RUN uv sync --frozen --no-dev
@@ -22,7 +21,7 @@ RUN useradd --system --create-home app \
     && chown -R app:app /app
 USER app
 
-ENV DATABASE_URL="sqlite+aiosqlite:////app/data/survey.db"
+ENV DATABASE_URL="sqlite+aiosqlite:////app/data/app.db"
 
 EXPOSE 8000
 CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]

@@ -10,7 +10,8 @@ wheels/
 .venv
 
 # Database
-survey.db
+app.db
+app.db-journal
 data/
 
 # Environment
