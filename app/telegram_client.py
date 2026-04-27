@@ -63,9 +63,9 @@ class TelegramClient:
 
     async def set_my_commands(self) -> dict[str, Any]:
         commands = [
-            {"command": "restart", "description": "Start a fresh pulse check-in"},
+            {"command": "restart", "description": "Start a fresh pulse survey"},
             {"command": "reset", "description": "Reset and start again"},
-            {"command": "cancel", "description": "Cancel the active check-in"},
+            {"command": "cancel", "description": "Cancel the active survey"},
             {"command": "help", "description": "Show help"},
         ]
         return await self._post("setMyCommands", {"commands": commands})

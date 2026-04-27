@@ -4,7 +4,7 @@
 <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
   <div>
     <h1 class="h2 mb-1">Employees</h1>
-    <p class="text-secondary mb-0">Import employees, copy onboarding links, and start pulse check-ins.</p>
+    <p class="text-secondary mb-0">Import employees, copy onboarding links, and start pulse surveys.</p>
   </div>
   <a href="/admin/employees/import" class="btn btn-outline-secondary">Import CSV</a>
 </div>
@@ -19,7 +19,7 @@
           <th>Department</th>
           <th>Project</th>
           <th>Role</th>
-          <th>Check-in</th>
+          <th>Survey</th>
           <th>Latest report</th>
           <th>Actions</th>
         </tr>
@@ -33,10 +33,10 @@
           <td>{{ employee.department }}</td>
           <td>{{ employee.project }}</td>
           <td>{{ employee.role }}</td>
-          <td><span class="badge text-bg-light border">{{ row.checkin_label }}</span></td>
+          <td><span class="badge text-bg-light border">{{ row.survey_label }}</span></td>
           <td>
             {% if row.latest_report %}
-            <a href="/admin/reports/{{ row.latest_report.id }}">{{ row.latest_report.status|report_status_label }}</a>
+            <a href="/admin/surveys/{{ row.latest_report.id }}">{{ row.latest_report.status|report_status_label }}</a>
             {% else %}
             <span class="text-secondary">None</span>
             {% endif %}
@@ -45,10 +45,7 @@
             <div class="d-flex flex-wrap gap-2">
             <a class="btn btn-sm btn-outline-secondary" href="/admin/employees/{{ employee.id }}">View</a>
             <button type="button" class="btn btn-sm btn-outline-secondary" data-copy="{{ row.deep_link }}" {% if not row.deep_link %}disabled{% endif %}>Copy link</button>
-            <form method="post" action="/admin/employees/{{ employee.id }}/send-checkin" class="d-inline">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-              <button type="submit" class="btn btn-sm btn-success">Send check-in</button>
-            </form>
+            <a class="btn btn-sm btn-success" href="/admin/employees/{{ employee.id }}/start-survey">Send survey</a>
             </div>
           </td>
         </tr>

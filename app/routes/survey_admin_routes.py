@@ -13,8 +13,8 @@ from app.web import templates
 router = APIRouter(prefix="/admin")
 
 
-@router.get("/reports.csv")
-async def reports_csv(
+@router.get("/surveys.csv")
+async def surveys_csv(
     status: str | None = None,
     db: AsyncSession = Depends(get_db),
     _session: AdminSession = Depends(require_admin_session),
@@ -24,12 +24,12 @@ async def reports_csv(
     return PlainTextResponse(
         csv_content,
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=reports.csv"},
+        headers={"Content-Disposition": "attachment; filename=surveys.csv"},
     )
 
 
-@router.get("/reports/{report_id}", response_class=HTMLResponse)
-async def report_detail(
+@router.get("/surveys/{report_id}", response_class=HTMLResponse)
+async def survey_detail(
     report_id: int,
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -40,7 +40,7 @@ async def report_detail(
         return templates.TemplateResponse(request, "404.html", status_code=404)
     messages = (
         await db.execute(
-            select(Message).where(Message.session_id == report.session_id).order_by(Message.created_at.asc())
+            select(Message).where(Message.survey_id == report.survey_id).order_by(Message.created_at.asc())
         )
     ).scalars().all()
     return templates.TemplateResponse(
@@ -56,8 +56,8 @@ async def report_detail(
     )
 
 
-@router.post("/reports/{report_id}")
-async def update_report(
+@router.post("/surveys/{report_id}")
+async def update_survey(
     report_id: int,
     csrf_token: str = Form(...),
     status: str = Form(...),
@@ -68,11 +68,11 @@ async def update_report(
     verify_csrf(session, csrf_token)
     report = await db.get(Report, report_id)
     if not report:
-        return RedirectResponse("/admin?error=Report+not+found.", status_code=303)
+        return RedirectResponse("/admin?error=Survey+not+found.", status_code=303)
     if status not in REPORT_STATUSES:
-        return RedirectResponse(f"/admin/reports/{report.id}?error=Invalid+status.", status_code=303)
+        return RedirectResponse(f"/admin/surveys/{report.id}?error=Invalid+status.", status_code=303)
     report.status = status
     report.hr_notes = hr_notes.strip()
     db.add(report)
     await db.commit()
-    return RedirectResponse(f"/admin/reports/{report.id}?notice=Report+updated.", status_code=303)
+    return RedirectResponse(f"/admin/surveys/{report.id}?notice=Survey+updated.", status_code=303)

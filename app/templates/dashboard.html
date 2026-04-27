@@ -4,22 +4,22 @@
 <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
   <div>
     <h1 class="h2 mb-1">Dashboard</h1>
-    <p class="text-secondary mb-0">Workplace sentiment check-ins and HR-facing reports.</p>
+    <p class="text-secondary mb-0">Workplace sentiment surveys and HR-facing reports.</p>
   </div>
-  <a href="/admin/reports.csv{% if selected_status %}?status={{ selected_status }}{% endif %}" class="btn btn-success">Export CSV</a>
+  <a href="/admin/surveys.csv{% if selected_status %}?status={{ selected_status }}{% endif %}" class="btn btn-success">Export CSV</a>
 </div>
 
 <div class="row g-3 mb-4">
   <div class="col-12 col-sm-6 col-xl"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-secondary small">Total employees</div><div class="display-6 fw-semibold">{{ stats.total_employees }}</div></div></div></div>
-  <div class="col-12 col-sm-6 col-xl"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-secondary small">Active check-ins</div><div class="display-6 fw-semibold">{{ stats.active_checkins }}</div></div></div></div>
-  <div class="col-12 col-sm-6 col-xl"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-secondary small">Completed check-ins</div><div class="display-6 fw-semibold">{{ stats.completed_checkins }}</div></div></div></div>
+  <div class="col-12 col-sm-6 col-xl"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-secondary small">Active surveys</div><div class="display-6 fw-semibold">{{ stats.active_surveys }}</div></div></div></div>
+  <div class="col-12 col-sm-6 col-xl"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-secondary small">Completed surveys</div><div class="display-6 fw-semibold">{{ stats.completed_surveys }}</div></div></div></div>
   <div class="col-12 col-sm-6 col-xl"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-secondary small">Reports generated</div><div class="display-6 fw-semibold">{{ stats.reports_generated }}</div></div></div></div>
   <div class="col-12 col-sm-6 col-xl"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-secondary small">Open reports</div><div class="display-6 fw-semibold">{{ stats.open_reports }}</div></div></div></div>
 </div>
 
 <section class="card border-0 shadow-sm">
   <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center py-3 gap-2">
-    <h2 class="h5 mb-0">Reports</h2>
+    <h2 class="h5 mb-0">Surveys</h2>
     <form method="get" action="/admin" class="d-flex align-items-center gap-2 mb-0">
       <label class="col-form-label col-form-label-sm text-secondary mb-0">Status</label>
       <select class="form-select form-select-sm" name="status" onchange="this.form.submit()">
@@ -43,23 +43,26 @@
         </tr>
       </thead>
       <tbody>
+        {% set ns = namespace(prev_emp=None) %}
         {% for report in reports %}
-        <tr>
-          <td><a href="/admin/reports/{{ report.id }}">{{ report.employee.name }}</a></td>
-          <td>{{ report.employee.department }}</td>
-          <td>{{ report.employee.project }}</td>
-          <td><span class="badge text-bg-secondary">{{ report.status|report_status_label }}</span></td>
+        {% set new_group = report.employee_id != ns.prev_emp %}
+        <tr{% if new_group and not loop.first %} class="border-top border-2"{% endif %}>
+          <td class="fw-semibold">{% if new_group %}{{ report.employee.name }}{% endif %}</td>
+          <td>{% if new_group %}{{ report.employee.department }}{% endif %}</td>
+          <td>{% if new_group %}{{ report.employee.project }}{% endif %}</td>
+          <td><a href="/admin/surveys/{{ report.id }}"><span class="badge text-bg-secondary">{{ report.status|report_status_label }}</span></a></td>
           <td>{{ report.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
         </tr>
+        {% set ns.prev_emp = report.employee_id %}
         {% else %}
-        <tr><td colspan="5" class="text-center text-secondary py-4">No reports generated yet.</td></tr>
+        <tr><td colspan="5" class="text-center text-secondary py-4">No surveys completed yet.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
   {% if total_pages > 1 %}
   <div class="card-footer bg-white d-flex justify-content-between align-items-center">
-    <div class="text-secondary small">Page {{ page }} of {{ total_pages }} ({{ total_reports }} reports)</div>
+    <div class="text-secondary small">Page {{ page }} of {{ total_pages }} ({{ total_reports }} surveys)</div>
     <nav>
       <ul class="pagination pagination-sm mb-0">
         <li class="page-item {% if page <= 1 %}disabled{% endif %}">

@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_admin_session
 from app.database import get_db
-from app.models import AdminSession, CheckinSession, Employee, Report
+from app.models import AdminSession, Employee, Report, Survey
 from app.reports import REPORT_STATUSES
 from app.web import templates
 
@@ -30,15 +30,19 @@ async def dashboard(
 ) -> HTMLResponse:
     stats = {
         "total_employees": (await db.execute(select(func.count(Employee.id)))).scalar() or 0,
-        "active_checkins": (await db.execute(select(func.count(CheckinSession.id)).where(CheckinSession.status == "active"))).scalar() or 0,
-        "completed_checkins": (await db.execute(select(func.count(CheckinSession.id)).where(CheckinSession.status == "completed"))).scalar() or 0,
+        "active_surveys": (await db.execute(select(func.count(Survey.id)).where(Survey.status == "active"))).scalar() or 0,
+        "completed_surveys": (await db.execute(select(func.count(Survey.id)).where(Survey.status == "completed"))).scalar() or 0,
         "reports_generated": (await db.execute(select(func.count(Report.id)))).scalar() or 0,
         "open_reports": (await db.execute(select(func.count(Report.id)).where(Report.status == "open"))).scalar() or 0,
     }
 
     selected_status = status if status in REPORT_STATUSES else None
     page = max(page, 1)
-    base_query = select(Report).order_by(Report.created_at.desc())
+    base_query = (
+        select(Report)
+        .join(Employee, Employee.id == Report.employee_id)
+        .order_by(Employee.name.asc(), Report.created_at.desc())
+    )
     count_query = select(func.count(Report.id))
     if selected_status:
         base_query = base_query.where(Report.status == selected_status)

@@ -7,8 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_admin_session, verify_csrf
 from app.bot_logic import (
-    checkin_label,
     latest_report_for_employee,
+    survey_label,
 )
 from app.config import settings
 from app.csv_import import ensure_onboarding_token, import_employees_from_csv, regenerate_onboarding_token
@@ -41,7 +41,7 @@ async def employee_view_model(db: AsyncSession, employee: Employee) -> dict:
     report = await latest_report_for_employee(db, employee.id)
     return {
         "employee": employee,
-        "checkin_label": await checkin_label(db, employee.id),
+        "survey_label": await survey_label(db, employee.id),
         "latest_report": report,
         "deep_link": deep_link_for_token(token.token),
     }
@@ -109,7 +109,7 @@ async def employee_detail(
         return templates.TemplateResponse(request, "404.html", status_code=404)
     token = await ensure_onboarding_token(db, employee)
     latest_report = await latest_report_for_employee(db, employee.id)
-    label = await checkin_label(db, employee.id)
+    label = await survey_label(db, employee.id)
     await db.commit()
     return templates.TemplateResponse(
         request,
@@ -119,7 +119,7 @@ async def employee_detail(
             "csrf_token": session.csrf_token,
             "employee": employee,
             "deep_link": deep_link_for_token(token.token),
-            "checkin_label": label,
+            "survey_label": label,
             "latest_report": latest_report,
         },
     )

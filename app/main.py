@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from app.auth import seed_admin
 from app.config import settings
 from app.database import async_session, init_db
-from app.routes import auth_routes, checkin_routes, dashboard_routes, employee_routes, report_routes
+from app.routes import auth_routes, dashboard_routes, employee_routes, survey_admin_routes, survey_routes
 from app.telegram_client import TelegramAPIError, TelegramClient
 from app.telegram_polling import polling_loop
 
@@ -55,5 +55,5 @@ app = FastAPI(title="Sentiment Sense", lifespan=lifespan)
 app.include_router(dashboard_routes.router)
 app.include_router(auth_routes.router)
 app.include_router(employee_routes.router)
-app.include_router(checkin_routes.router)
-app.include_router(report_routes.router)
+app.include_router(survey_routes.router)
+app.include_router(survey_admin_routes.router)

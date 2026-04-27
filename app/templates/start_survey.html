@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Send Survey · {{ employee.name }} · Sentiment Sense{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+  <div>
+    <h1 class="h2 mb-1">Send survey</h1>
+    <p class="text-secondary mb-0">{{ employee.name }} · {{ employee.role }} · {{ employee.department }}</p>
+  </div>
+  <a href="/admin/employees/{{ employee.id }}" class="btn btn-outline-secondary">Cancel</a>
+</div>
+
+<section class="row g-4">
+  <div class="col-12 col-lg-7">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <form method="post" action="/admin/employees/{{ employee.id }}/start-survey" enctype="multipart/form-data" class="vstack gap-4">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+          <div class="row g-3">
+            <div class="col-12 col-sm-6">
+              <label class="form-label">Total questions</label>
+              <input type="number" class="form-control" name="total_questions" min="1" max="20" value="3" required>
+              <div class="form-text">Bot will ask up to this many questions, then end the survey.</div>
+            </div>
+            <div class="col-12 col-sm-6">
+              <label class="form-label">% from custom questions</label>
+              <input type="number" class="form-control" name="custom_percent" min="0" max="100" value="0" required>
+              <div class="form-text">Share of total questions taken from your list. The rest are AI-generated.</div>
+            </div>
+          </div>
+
+          <div>
+            <label class="form-label">Custom questions (one per line)</label>
+            <textarea class="form-control" name="custom_questions_text" rows="6" placeholder="How well-supported do you feel by your manager?&#10;Is your current workload sustainable?"></textarea>
+            <div class="form-text">Optional. Combined with any uploaded CSV. Selection is randomized per survey.</div>
+          </div>
+
+          <div>
+            <label class="form-label">Upload CSV (optional)</label>
+            <input type="file" class="form-control" name="custom_questions_file" accept=".csv,text/csv">
+            <div class="form-text">Single column. Header row <code>question</code> is auto-skipped.</div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-success">Send survey</button>
+            <a href="/admin/employees/{{ employee.id }}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-5">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <h2 class="h6 mb-3">How it works</h2>
+        <ul class="small text-secondary mb-0">
+          <li>Sending cancels any in-progress survey for this employee.</li>
+          <li>The bot DMs the employee on Telegram with the first question right away.</li>
+          <li>If you provide custom questions, the bot weaves them in without duplicating.</li>
+          <li>Bot will allow up to 20% extra turns beyond your question count if it needs follow-ups.</li>
+          <li>When the survey ends, an HR-facing report is generated automatically.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
