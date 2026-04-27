@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Login · Sentiment Sense{% endblock %}
+{% block content %}
+<div class="row justify-content-center py-5">
+  <div class="col-12 col-sm-10 col-md-6 col-lg-4">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4 p-lg-5">
+        <div class="mb-4">
+          <h1 class="h3 mb-1">Admin Login</h1>
+          <p class="text-secondary mb-0">Confidential employee pulse assistant</p>
+        </div>
+        {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+        <form method="post" action="/login" class="vstack gap-3">
+          <div>
+            <label class="form-label">Email</label>
+            <input class="form-control form-control-lg" type="email" name="email" required autofocus>
+          </div>
+          <div>
+            <label class="form-label">Password</label>
+            <input class="form-control form-control-lg" type="password" name="password" required>
+          </div>
+          <button type="submit" class="btn btn-success btn-lg w-100">Login</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

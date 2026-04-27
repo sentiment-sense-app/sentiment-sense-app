@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Employees · Sentiment Sense{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+  <div>
+    <h1 class="h2 mb-1">Employees</h1>
+    <p class="text-secondary mb-0">Import employees, copy onboarding links, and start pulse check-ins.</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <form method="post" action="/admin/checkins/start-all">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="btn btn-success">Send to eligible</button>
+    </form>
+    <a href="/admin/employees/import" class="btn btn-outline-secondary">Import CSV</a>
+  </div>
+</div>
+
+<section class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Department</th>
+          <th>Project</th>
+          <th>Role</th>
+          <th>Check-in</th>
+          <th>Latest report</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        {% set employee = row.employee %}
+        <tr>
+          <td><a href="/admin/employees/{{ employee.id }}">{{ employee.name }}</a></td>
+          <td>{{ employee.email }}</td>
+          <td>{{ employee.department }}</td>
+          <td>{{ employee.project }}</td>
+          <td>{{ employee.role }}</td>
+          <td><span class="badge text-bg-light border">{{ row.checkin_label }}</span></td>
+          <td>
+            {% if row.latest_report %}
+            <a href="/admin/reports/{{ row.latest_report.id }}">{{ row.latest_report.status|report_status_label }}</a>
+            {% else %}
+            <span class="text-secondary">None</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-sm btn-outline-secondary" href="/admin/employees/{{ employee.id }}">View</a>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-copy="{{ row.deep_link }}" {% if not row.deep_link %}disabled{% endif %}>Copy link</button>
+            <form method="post" action="/admin/employees/{{ employee.id }}/send-checkin" class="d-inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit" class="btn btn-sm btn-success">Send check-in</button>
+            </form>
+            <form method="post" action="/admin/employees/{{ employee.id }}/reset" class="d-inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit" class="btn btn-sm btn-outline-danger">Reset</button>
+            </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="text-center text-secondary py-4">No employees imported yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

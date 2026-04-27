@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · Sentiment Sense{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+  <div>
+    <h1 class="h2 mb-1">Dashboard</h1>
+    <p class="text-secondary mb-0">Workplace sentiment check-ins and HR-facing reports.</p>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-sm-6 col-xl"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-secondary small">Total employees</div><div class="display-6 fw-semibold">{{ stats.total_employees }}</div></div></div></div>
+  <div class="col-12 col-sm-6 col-xl"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-secondary small">Active check-ins</div><div class="display-6 fw-semibold">{{ stats.active_checkins }}</div></div></div></div>
+  <div class="col-12 col-sm-6 col-xl"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-secondary small">Completed check-ins</div><div class="display-6 fw-semibold">{{ stats.completed_checkins }}</div></div></div></div>
+  <div class="col-12 col-sm-6 col-xl"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-secondary small">Reports generated</div><div class="display-6 fw-semibold">{{ stats.reports_generated }}</div></div></div></div>
+  <div class="col-12 col-sm-6 col-xl"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-secondary small">Open reports</div><div class="display-6 fw-semibold">{{ stats.open_reports }}</div></div></div></div>
+</div>
+
+<section class="card border-0 shadow-sm">
+  <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+    <h2 class="h5 mb-0">Latest Reports</h2>
+    <a href="/admin/reports" class="btn btn-outline-secondary btn-sm">View all</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Employee</th>
+          <th>Department</th>
+          <th>Project</th>
+          <th>Status</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for report in latest_reports %}
+        <tr>
+          <td><a href="/admin/reports/{{ report.id }}">{{ report.employee.name }}</a></td>
+          <td>{{ report.employee.department }}</td>
+          <td>{{ report.employee.project }}</td>
+          <td><span class="badge text-bg-secondary">{{ report.status|report_status_label }}</span></td>
+          <td>{{ report.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-secondary py-4">No reports generated yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

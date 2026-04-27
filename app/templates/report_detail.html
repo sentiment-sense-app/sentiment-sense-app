@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Report #{{ report.id }} · Sentiment Sense{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+  <div>
+    <h1 class="h2 mb-1">Report #{{ report.id }}</h1>
+    <p class="text-secondary mb-0">{{ report.employee.name }} · {{ report.employee.department }} · {{ report.employee.project }}</p>
+  </div>
+  <a href="/admin/employees/{{ report.employee.id }}" class="btn btn-outline-secondary">Transcript</a>
+</div>
+
+<section class="row g-4 mb-4">
+  <div class="col-12 col-xl-5">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+    <h2 class="h5 mb-3">Employee Information</h2>
+    <dl class="row mb-0">
+      <dt class="col-sm-4 text-secondary">Name</dt><dd class="col-sm-8">{{ report.employee.name }}</dd>
+      <dt class="col-sm-4 text-secondary">Email</dt><dd class="col-sm-8">{{ report.employee.email }}</dd>
+      <dt class="col-sm-4 text-secondary">Manager</dt><dd class="col-sm-8">{{ report.employee.manager }}</dd>
+      <dt class="col-sm-4 text-secondary">Role</dt><dd class="col-sm-8">{{ report.employee.role }}</dd>
+      <dt class="col-sm-4 text-secondary">Phone</dt><dd class="col-sm-8">{{ report.employee.phone }}</dd>
+    </dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-xl-7">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+    <h2 class="h5 mb-3">Status Controls</h2>
+    <form method="post" action="/admin/reports/{{ report.id }}" class="vstack gap-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div>
+        <label class="form-label">Status</label>
+        <select class="form-select" name="status">
+          {% for status in report_statuses %}
+          <option value="{{ status }}" {% if report.status == status %}selected{% endif %}>{{ status|report_status_label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label">HR notes</label>
+        <textarea class="form-control" name="hr_notes" rows="7">{{ report.hr_notes }}</textarea>
+      </div>
+      <button type="submit" class="btn btn-success">Save</button>
+    </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="card border-0 shadow-sm mb-4">
+  <div class="card-body">
+  <h2 class="h5 mb-3">Full LLM-Generated Report</h2>
+  <div class="bg-light border rounded p-3 lh-lg">{{ report.report_markdown|nl2br }}</div>
+  </div>
+</section>
+
+<section class="card border-0 shadow-sm">
+  <div class="card-body">
+  <h2 class="h5 mb-3">Transcript</h2>
+  <div class="vstack gap-3">
+    {% for message in messages %}
+    <article class="border-start border-4 {% if message.direction == 'employee' %}border-success{% elif message.direction == 'bot' %}border-primary{% else %}border-secondary{% endif %} bg-light rounded p-3">
+      <strong>{{ message.direction.title() }}</strong>
+      <p class="mb-1">{{ message.text }}</p>
+      <time class="small text-secondary">{{ message.created_at.strftime("%Y-%m-%d %H:%M") }}</time>
+    </article>
+    {% else %}
+    <p class="text-center text-secondary py-4 mb-0">No transcript found.</p>
+    {% endfor %}
+  </div>
+  </div>
+</section>
+{% endblock %}

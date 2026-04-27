@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Import Employees · Sentiment Sense{% endblock %}
+{% block content %}
+<div class="mb-4">
+  <div>
+    <h1 class="h2 mb-1">Import Employees</h1>
+    <p class="text-secondary mb-0">CSV columns: name, email, department, manager, project, role, phone.</p>
+  </div>
+</div>
+
+<section class="row mb-4">
+  <div class="col-12 col-md-8 col-lg-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <form method="post" action="/admin/employees/import" enctype="multipart/form-data" class="vstack gap-3">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div>
+            <label class="form-label">CSV file</label>
+            <input class="form-control" type="file" name="file" accept=".csv,text/csv" required>
+          </div>
+          <button type="submit" class="btn btn-success">Import</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% if result %}
+<section class="card border-0 shadow-sm">
+  <div class="card-body">
+  <h2 class="h5 mb-3">Import Result</h2>
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3"><div class="border rounded p-3"><div class="text-secondary small">Imported</div><div class="fs-3 fw-semibold">{{ result.imported }}</div></div></div>
+    <div class="col-6 col-lg-3"><div class="border rounded p-3"><div class="text-secondary small">Updated</div><div class="fs-3 fw-semibold">{{ result.updated }}</div></div></div>
+    <div class="col-6 col-lg-3"><div class="border rounded p-3"><div class="text-secondary small">Skipped</div><div class="fs-3 fw-semibold">{{ result.skipped }}</div></div></div>
+    <div class="col-6 col-lg-3"><div class="border rounded p-3"><div class="text-secondary small">Failed</div><div class="fs-3 fw-semibold">{{ result.failed }}</div></div></div>
+  </div>
+  {% if result.errors %}
+  <h3 class="h6">Validation Errors</h3>
+  <ul class="text-danger mb-0">
+    {% for error in result.errors %}
+    <li>{{ error }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}
