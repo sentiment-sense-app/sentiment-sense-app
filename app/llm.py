@@ -83,13 +83,16 @@ def parse_llm_json(content: str) -> dict[str, Any]:
 
 async def generate_bot_turn(employee: Employee, messages: list[Message]) -> dict[str, Any]:
     client = _get_client()
-    response = await client.chat.completions.create(
-        model=settings.openrouter_model,
-        response_format={"type": "json_object"},
-        messages=[
-            {"role": "system", "content": build_system_prompt()},
-            {"role": "user", "content": build_conversation_context(employee, messages)},
-        ],
-    )
+    try:
+        response = await client.chat.completions.create(
+            model=settings.openrouter_model,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": build_system_prompt()},
+                {"role": "user", "content": build_conversation_context(employee, messages)},
+            ],
+        )
+    except Exception as exc:
+        raise LLMError(f"LLM request failed: {exc}") from exc
     content = response.choices[0].message.content or ""
     return parse_llm_json(content)

@@ -178,7 +178,7 @@ async def handle_start_command(
     await db.commit()
 
     await telegram.send_message(chat_id, INTRO_MESSAGE)
-    await telegram.send_message(chat_id, "Setup is complete. HR can now send pulse check-ins when needed.")
+    await start_checkin_for_employee(db, telegram, employee, cancel_existing=True)
 
 
 async def handle_restart_command(db: AsyncSession, telegram: TelegramClient, employee: Employee) -> None:
