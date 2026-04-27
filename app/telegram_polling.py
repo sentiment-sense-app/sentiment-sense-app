@@ -34,6 +34,12 @@ async def polling_loop(stop_event: asyncio.Event) -> None:
         logger.info("Telegram polling disabled because TELEGRAM_BOT_TOKEN is not configured.")
         return
 
+    # A leftover webhook registration silently swallows updates from getUpdates.
+    try:
+        await telegram.delete_webhook()
+    except TelegramAPIError:
+        logger.warning("Could not clear Telegram webhook before polling.")
+
     while not stop_event.is_set():
         try:
             async with async_session() as db:

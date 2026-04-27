@@ -58,6 +58,9 @@ class TelegramClient:
     async def get_me(self) -> dict[str, Any]:
         return await self._post("getMe", {})
 
+    async def delete_webhook(self, drop_pending_updates: bool = False) -> dict[str, Any]:
+        return await self._post("deleteWebhook", {"drop_pending_updates": drop_pending_updates})
+
     async def set_my_commands(self) -> dict[str, Any]:
         commands = [
             {"command": "restart", "description": "Start a fresh pulse check-in"},
