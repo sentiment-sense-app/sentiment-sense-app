@@ -13,31 +13,6 @@ from app.web import templates
 router = APIRouter(prefix="/admin")
 
 
-@router.get("/reports", response_class=HTMLResponse)
-async def reports(
-    request: Request,
-    status: str | None = None,
-    db: AsyncSession = Depends(get_db),
-    session: AdminSession = Depends(require_admin_session),
-) -> HTMLResponse:
-    query = select(Report).order_by(Report.created_at.desc())
-    selected_status = status if status in REPORT_STATUSES else None
-    if selected_status:
-        query = query.where(Report.status == selected_status)
-    reports_list = (await db.execute(query)).scalars().all()
-    return templates.TemplateResponse(
-        request,
-        "reports.html",
-        {
-            "admin": session.admin,
-            "csrf_token": session.csrf_token,
-            "reports": reports_list,
-            "report_statuses": REPORT_STATUSES,
-            "selected_status": selected_status,
-        },
-    )
-
-
 @router.get("/reports.csv")
 async def reports_csv(
     status: str | None = None,
@@ -93,7 +68,7 @@ async def update_report(
     verify_csrf(session, csrf_token)
     report = await db.get(Report, report_id)
     if not report:
-        return RedirectResponse("/admin/reports?error=Report+not+found.", status_code=303)
+        return RedirectResponse("/admin?error=Report+not+found.", status_code=303)
     if status not in REPORT_STATUSES:
         return RedirectResponse(f"/admin/reports/{report.id}?error=Invalid+status.", status_code=303)
     report.status = status
