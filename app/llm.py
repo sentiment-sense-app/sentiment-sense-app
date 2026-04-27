@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 import json
+import logging
+import re
+import time
 from typing import Any
 
 from openai import AsyncOpenAI
 
 from app.config import settings
 from app.models import Employee, Message
+
+
+logger = logging.getLogger(__name__)
 
 
 class LLMError(RuntimeError):
@@ -39,8 +45,16 @@ def build_system_prompt() -> str:
         "Return only valid JSON with exactly these keys: reply_to_employee, "
         "conversation_done, report_markdown. report_markdown must be null until "
         "conversation_done is true. When conversation_done is true, report_markdown "
-        "must contain one complete HR-facing Markdown report. Do not return separate "
-        "risk_level, primary_theme, summary, or suggested_actions fields."
+        "must contain one complete HR-facing report formatted as well-structured "
+        "GitHub-Flavored Markdown using these sections in order: "
+        "## Summary (2-3 sentence overview), "
+        "## Sentiment (one of Positive / Neutral / Concerned / At-risk, with one-line justification), "
+        "## Key Themes (bulleted list), "
+        "## Notable Quotes (blockquoted lines from the employee), "
+        "## Suggested Follow-up (numbered actions for HR). "
+        "Use Markdown headings (##), bullet lists (-), numbered lists (1.), and "
+        "blockquotes (>) appropriately. Do not wrap the markdown in code fences. "
+        "Do not return separate risk_level, primary_theme, summary, or suggested_actions fields."
     )
 
 
@@ -61,6 +75,14 @@ def build_conversation_context(employee: Employee, messages: list[Message]) -> s
     return "\n".join(lines)
 
 
+_FENCE_RE = re.compile(r"^\s*```(?:md|markdown)?\s*\n(.*?)\n?\s*```\s*$", re.DOTALL | re.IGNORECASE)
+
+
+def strip_markdown_fence(text: str) -> str:
+    match = _FENCE_RE.match(text)
+    return match.group(1).strip() if match else text.strip()
+
+
 def parse_llm_json(content: str) -> dict[str, Any]:
     try:
         parsed = json.loads(content)
@@ -78,11 +100,15 @@ def parse_llm_json(content: str) -> dict[str, Any]:
         raise LLMError("Completed LLM response is missing report_markdown")
     if not parsed["conversation_done"] and report is not None:
         raise LLMError("Incomplete LLM response must use null report_markdown")
+    if isinstance(report, str):
+        parsed["report_markdown"] = strip_markdown_fence(report)
     return parsed
 
 
 async def generate_bot_turn(employee: Employee, messages: list[Message]) -> dict[str, Any]:
     client = _get_client()
+    logger.info("LLM call start: model=%s turn=%d employee=%s", settings.openrouter_model, len(messages), employee.name)
+    started = time.perf_counter()
     try:
         response = await client.chat.completions.create(
             model=settings.openrouter_model,
@@ -93,6 +119,12 @@ async def generate_bot_turn(employee: Employee, messages: list[Message]) -> dict
             ],
         )
     except Exception as exc:
+        elapsed = time.perf_counter() - started
+        logger.warning("LLM call failed after %.2fs: %s", elapsed, exc)
         raise LLMError(f"LLM request failed: {exc}") from exc
+    elapsed = time.perf_counter() - started
+    usage = getattr(response, "usage", None)
+    tokens = f"in={usage.prompt_tokens} out={usage.completion_tokens}" if usage else "tokens=?"
+    logger.info("LLM call done in %.2fs (%s)", elapsed, tokens)
     content = response.choices[0].message.content or ""
     return parse_llm_json(content)

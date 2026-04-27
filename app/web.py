@@ -1,3 +1,4 @@
+import markdown as md
 from fastapi.templating import Jinja2Templates
 from markupsafe import Markup, escape
 
@@ -12,6 +13,12 @@ def nl2br(value: str) -> Markup:
     return Markup("<br>".join(escape(value or "").splitlines()))
 
 
+def render_markdown(value: str) -> Markup:
+    html = md.markdown(value or "", extensions=["extra", "sane_lists", "nl2br"])
+    return Markup(html)
+
+
 templates.env.filters["nl2br"] = nl2br
+templates.env.filters["markdown"] = render_markdown
 templates.env.filters["report_status_label"] = report_status_label
 templates.env.globals["settings"] = settings

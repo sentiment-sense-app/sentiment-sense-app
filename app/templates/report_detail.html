@@ -53,7 +53,7 @@
 <section class="card border-0 shadow-sm mb-4">
   <div class="card-body">
   <h2 class="h5 mb-3">Full LLM-Generated Report</h2>
-  <div class="bg-light border rounded p-3 lh-lg">{{ report.report_markdown|nl2br }}</div>
+  <div class="bg-light border rounded p-3 markdown-body">{{ report.report_markdown|markdown }}</div>
   </div>
 </section>
 
