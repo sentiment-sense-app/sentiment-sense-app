@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import json
 import logging
+import math
+import random
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.llm import LLMError, generate_bot_turn
-from app.models import CheckinSession, Employee, Message, OnboardingToken, Report, now_utc
+from app.models import Employee, Message, OnboardingToken, Report, Survey, now_utc
 from app.telegram_client import TelegramAPIError, TelegramClient
 
 
@@ -21,7 +23,7 @@ INTRO_MESSAGE = (
 )
 
 NO_ACTIVE_MESSAGE = (
-    "There is no active check-in right now. HR will start one when needed. "
+    "There is no active survey right now. HR will start one when needed. "
     "For testing, you can use /restart."
 )
 
@@ -30,24 +32,45 @@ LLM_FALLBACK_MESSAGE = (
     "Please try again in a moment."
 )
 
+SURVEY_COMPLETE_MESSAGE = (
+    "✅ Your survey is complete. Thank you for sharing your feedback — your responses "
+    "are confidential and will help HR support the team."
+)
 
-async def active_session_for_employee(db: AsyncSession, employee_id: int) -> CheckinSession | None:
+DEFAULT_TOTAL_QUESTIONS = 3
+TURN_CAP_MULTIPLIER = 1.2
+
+
+def compute_turn_cap(total_questions: int) -> int:
+    return max(total_questions, math.ceil(total_questions * TURN_CAP_MULTIPLIER))
+
+
+def pick_custom_questions(custom_questions: list[str], total_questions: int, custom_percent: int) -> list[str]:
+    if not custom_questions or total_questions <= 0 or custom_percent <= 0:
+        return []
+    target = min(len(custom_questions), max(1, round(total_questions * custom_percent / 100)))
+    pool = list(custom_questions)
+    random.shuffle(pool)
+    return pool[:target]
+
+
+async def active_survey_for_employee(db: AsyncSession, employee_id: int) -> Survey | None:
     return (
         await db.execute(
-            select(CheckinSession)
-            .where(CheckinSession.employee_id == employee_id)
-            .where(CheckinSession.status == "active")
-            .order_by(CheckinSession.created_at.desc())
+            select(Survey)
+            .where(Survey.employee_id == employee_id)
+            .where(Survey.status == "active")
+            .order_by(Survey.created_at.desc())
         )
     ).scalar_one_or_none()
 
 
-async def latest_session_for_employee(db: AsyncSession, employee_id: int) -> CheckinSession | None:
+async def latest_survey_for_employee(db: AsyncSession, employee_id: int) -> Survey | None:
     return (
         await db.execute(
-            select(CheckinSession)
-            .where(CheckinSession.employee_id == employee_id)
-            .order_by(CheckinSession.created_at.desc())
+            select(Survey)
+            .where(Survey.employee_id == employee_id)
+            .order_by(Survey.created_at.desc())
         )
     ).scalars().first()
 
@@ -62,13 +85,13 @@ async def latest_report_for_employee(db: AsyncSession, employee_id: int) -> Repo
     ).scalars().first()
 
 
-async def checkin_label(db: AsyncSession, employee_id: int) -> str:
-    session = await latest_session_for_employee(db, employee_id)
-    if not session:
+async def survey_label(db: AsyncSession, employee_id: int) -> str:
+    survey = await latest_survey_for_employee(db, employee_id)
+    if not survey:
         return "Not started"
-    if session.status == "active":
+    if survey.status == "active":
         return "Active"
-    if session.status == "completed":
+    if survey.status == "completed":
         return "Completed"
     return "Not started"
 
@@ -76,7 +99,7 @@ async def checkin_label(db: AsyncSession, employee_id: int) -> str:
 async def store_message(
     db: AsyncSession,
     employee: Employee,
-    session: CheckinSession | None,
+    survey: Survey | None,
     direction: str,
     text: str,
     telegram_update_id: int | None = None,
@@ -84,7 +107,7 @@ async def store_message(
     raw_payload: dict[str, Any] | None = None,
 ) -> Message:
     message = Message(
-        session_id=session.id if session else None,
+        survey_id=survey.id if survey else None,
         employee_id=employee.id,
         telegram_update_id=telegram_update_id,
         telegram_message_id=telegram_message_id,
@@ -97,45 +120,59 @@ async def store_message(
     return message
 
 
-async def start_checkin_for_employee(
+def _opening_question(employee: Employee, custom_questions: list[str]) -> str:
+    if custom_questions:
+        return f"Hi {employee.name}, quick survey. {custom_questions[0]}"
+    return f"Hi {employee.name}, quick survey. How are you feeling about work this week?"
+
+
+async def start_survey_for_employee(
     db: AsyncSession,
     telegram: TelegramClient,
     employee: Employee,
     created_by_admin_id: int | None = None,
     cancel_existing: bool = False,
+    total_questions: int = DEFAULT_TOTAL_QUESTIONS,
+    custom_questions: list[str] | None = None,
+    custom_percent: int = 0,
 ) -> tuple[bool, str]:
     if not employee.telegram_chat_id:
-        return False, "Cannot send check-in yet. Ask the employee to open their onboarding link first."
+        return False, "Cannot send survey yet. Ask the employee to open their onboarding link first."
 
-    existing = await active_session_for_employee(db, employee.id)
+    existing = await active_survey_for_employee(db, employee.id)
     if existing and not cancel_existing:
-        return False, "An active check-in already exists for this employee."
+        return False, "An active survey already exists for this employee."
     if existing and cancel_existing:
         existing.status = "cancelled"
         existing.cancelled_at = now_utc()
         db.add(existing)
 
-    session = CheckinSession(
+    customs = pick_custom_questions(custom_questions or [], total_questions, custom_percent)
+    survey = Survey(
         employee_id=employee.id,
         status="active",
         started_at=now_utc(),
         created_by_admin_id=created_by_admin_id,
+        total_questions=total_questions,
+        custom_percent=custom_percent,
+        custom_questions_json=json.dumps(customs),
+        turn_cap=compute_turn_cap(total_questions),
     )
-    db.add(session)
+    db.add(survey)
     await db.flush()
-    first_message = f"Hi {employee.name}, quick check-in. How are you feeling about work this week?"
-    await store_message(db, employee, session, "bot", first_message)
+    first_message = _opening_question(employee, customs)
+    await store_message(db, employee, survey, "bot", first_message)
 
     try:
         await telegram.send_message(employee.telegram_chat_id, first_message)
     except TelegramAPIError as exc:
-        session.status = "failed"
-        db.add(session)
+        survey.status = "failed"
+        db.add(survey)
         await db.commit()
         return False, f"Telegram send failed: {exc}"
 
     await db.commit()
-    return True, "Check-in sent."
+    return True, "Survey sent."
 
 
 async def handle_start_command(
@@ -165,7 +202,7 @@ async def handle_start_command(
 
     employee = token.employee
     if employee.telegram_chat_id and str(employee.telegram_chat_id) == chat_id:
-        await telegram.send_message(chat_id, "Setup is already complete. HR can now send pulse check-ins when needed.")
+        await telegram.send_message(chat_id, "Setup is already complete. HR can now send pulse surveys when needed.")
         return
 
     employee.telegram_chat_id = chat_id
@@ -178,72 +215,115 @@ async def handle_start_command(
     await db.commit()
 
     await telegram.send_message(chat_id, INTRO_MESSAGE)
-    await start_checkin_for_employee(db, telegram, employee, cancel_existing=True)
+    await start_survey_for_employee(db, telegram, employee, cancel_existing=True)
 
 
 async def handle_restart_command(db: AsyncSession, telegram: TelegramClient, employee: Employee) -> None:
-    ok, message = await start_checkin_for_employee(db, telegram, employee, cancel_existing=True)
+    ok, message = await start_survey_for_employee(db, telegram, employee, cancel_existing=True)
     if not ok and employee.telegram_chat_id:
         await telegram.send_message(employee.telegram_chat_id, message)
 
 
 async def handle_cancel_command(db: AsyncSession, telegram: TelegramClient, employee: Employee) -> None:
-    session = await active_session_for_employee(db, employee.id)
-    if not session:
-        await telegram.send_message(employee.telegram_chat_id, "There is no active check-in to cancel.")
+    survey = await active_survey_for_employee(db, employee.id)
+    if not survey:
+        await telegram.send_message(employee.telegram_chat_id, "There is no active survey to cancel.")
         return
-    session.status = "cancelled"
-    session.cancelled_at = now_utc()
-    db.add(session)
+    survey.status = "cancelled"
+    survey.cancelled_at = now_utc()
+    db.add(survey)
     await db.commit()
-    await telegram.send_message(employee.telegram_chat_id, "The active check-in has been cancelled.")
+    await telegram.send_message(employee.telegram_chat_id, "The active survey has been cancelled.")
+
+
+async def _finalize_survey(
+    db: AsyncSession,
+    employee: Employee,
+    survey: Survey,
+    report_markdown: str,
+) -> None:
+    survey.status = "completed"
+    survey.completed_at = now_utc()
+    db.add(survey)
+    db.add(
+        Report(
+            survey_id=survey.id,
+            employee_id=employee.id,
+            report_markdown=report_markdown.strip(),
+            status="open",
+        )
+    )
 
 
 async def handle_employee_message(
     db: AsyncSession,
     telegram: TelegramClient,
     employee: Employee,
-    session: CheckinSession,
+    survey: Survey,
     text: str,
     update_id: int,
     message_id: int | None,
     raw_payload: dict[str, Any],
 ) -> None:
-    logger.info("Employee msg from %s (session=%d): %r", employee.name, session.id, text[:80])
-    await store_message(db, employee, session, "employee", text, update_id, message_id, raw_payload)
+    logger.info("Employee msg from %s (survey=%d): %r", employee.name, survey.id, text[:80])
+    await store_message(db, employee, survey, "employee", text, update_id, message_id, raw_payload)
     await db.commit()
 
     messages = (
         await db.execute(
-            select(Message).where(Message.session_id == session.id).order_by(Message.created_at.asc())
+            select(Message).where(Message.survey_id == survey.id).order_by(Message.created_at.asc())
         )
     ).scalars().all()
+    bot_turns = sum(1 for m in messages if m.direction == "bot")
+    force_finalize = bot_turns >= survey.turn_cap
+    customs = json.loads(survey.custom_questions_json or "[]")
+
     try:
-        decision = await generate_bot_turn(employee, list(messages))
+        decision = await generate_bot_turn(
+            employee,
+            list(messages),
+            total_questions=survey.total_questions,
+            custom_questions=customs,
+            force_finalize=force_finalize,
+        )
     except LLMError as exc:
-        logger.warning("LLM failed for session %s: %s", session.id, exc)
-        await store_message(db, employee, session, "bot", LLM_FALLBACK_MESSAGE)
+        logger.warning("LLM failed for survey %s: %s", survey.id, exc)
+        if force_finalize:
+            placeholder = (
+                "## Summary\nReport could not be generated automatically; please review the transcript.\n\n"
+                "## Sentiment\nUnknown — LLM unavailable at finalize.\n\n"
+                "## Key Themes\n- See transcript\n\n"
+                "## Notable Quotes\n- See transcript\n\n"
+                "## Suggested Follow-up\n1. Review the conversation transcript manually."
+            )
+            await _finalize_survey(db, employee, survey, placeholder)
+            await db.commit()
+            await telegram.send_message(employee.telegram_chat_id, SURVEY_COMPLETE_MESSAGE)
+            return
+        await store_message(db, employee, survey, "bot", LLM_FALLBACK_MESSAGE)
         await db.commit()
         await telegram.send_message(employee.telegram_chat_id, LLM_FALLBACK_MESSAGE)
         return
 
     reply = decision["reply_to_employee"].strip()
-    await store_message(db, employee, session, "bot", reply)
-    if decision["conversation_done"]:
-        logger.info("Check-in complete for %s (session=%d), report saved", employee.name, session.id)
-        session.status = "completed"
-        session.completed_at = now_utc()
-        db.add(session)
-        db.add(
-            Report(
-                session_id=session.id,
-                employee_id=employee.id,
-                report_markdown=decision["report_markdown"].strip(),
-                status="open",
+    await store_message(db, employee, survey, "bot", reply)
+    completed = decision["conversation_done"] or force_finalize
+    if completed:
+        report_md = decision.get("report_markdown") or ""
+        if not report_md.strip():
+            report_md = (
+                "## Summary\nReport text was missing from the model response.\n\n"
+                "## Sentiment\nUnknown.\n\n"
+                "## Key Themes\n- See transcript\n\n"
+                "## Notable Quotes\n- See transcript\n\n"
+                "## Suggested Follow-up\n1. Review the conversation transcript manually."
             )
-        )
+        await _finalize_survey(db, employee, survey, report_md)
+        logger.info("Survey complete for %s (survey=%d), report saved", employee.name, survey.id)
     await db.commit()
     await telegram.send_message(employee.telegram_chat_id, reply)
+    if completed:
+        await telegram.send_message(employee.telegram_chat_id, SURVEY_COMPLETE_MESSAGE)
     logger.info("Bot reply sent to %s: %r", employee.name, reply[:80])
 
 
@@ -279,12 +359,12 @@ async def process_telegram_update(db: AsyncSession, telegram: TelegramClient, up
     if command == "/help":
         await telegram.send_message(
             chat_id,
-            "I help with short workplace pulse check-ins. Use /restart to start a fresh test check-in or /cancel to stop the active one.",
+            "I help with short workplace pulse surveys. Use /restart to start a fresh test survey or /cancel to stop the active one.",
         )
         return
 
-    session = await active_session_for_employee(db, employee.id)
-    if not session:
+    survey = await active_survey_for_employee(db, employee.id)
+    if not survey:
         await telegram.send_message(chat_id, NO_ACTIVE_MESSAGE)
         return
 
@@ -292,7 +372,7 @@ async def process_telegram_update(db: AsyncSession, telegram: TelegramClient, up
         db,
         telegram,
         employee,
-        session,
+        survey,
         text,
         int(update_id),
         message.get("message_id"),
