@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import secrets
 from datetime import timedelta
 
@@ -14,6 +15,7 @@ from app.models import Admin, AdminSession, now_utc
 
 
 password_hash = PasswordHash.recommended()
+logger = logging.getLogger(__name__)
 
 
 def hash_password(password: str) -> str:
@@ -35,11 +37,12 @@ async def seed_admin(db: AsyncSession) -> None:
     existing = (await db.execute(select(Admin).limit(1))).scalar_one_or_none()
     if existing:
         return
-    admin = Admin(
-        email=settings.admin_email.strip().lower(),
-        password_hash=hash_password(settings.admin_password),
-        is_active=True,
-    )
+    email = settings.admin_email.strip().lower()
+    password = settings.admin_password
+    if not email or not password:
+        logger.warning("ADMIN_EMAIL and ADMIN_PASSWORD not set; skipping admin seed.")
+        return
+    admin = Admin(email=email, password_hash=hash_password(password), is_active=True)
     db.add(admin)
     await db.commit()
 

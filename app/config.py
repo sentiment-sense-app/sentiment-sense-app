@@ -10,8 +10,8 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite+aiosqlite:///./app.db"
 
-    admin_email: str = "admin@example.com"
-    admin_password: str = "admin123"
+    admin_email: str = ""
+    admin_password: str = ""
 
     telegram_bot_token: str = ""
     telegram_bot_username: str = ""
