@@ -31,15 +31,35 @@ def _get_client() -> AsyncOpenAI:
     return _client
 
 
-def build_system_prompt() -> str:
+def build_system_prompt(total_questions: int, custom_questions: list[str], force_finalize: bool = False) -> str:
+    custom_block = ""
+    if custom_questions:
+        rendered = "\n".join(f"- {q}" for q in custom_questions)
+        custom_block = (
+            f"\nThe HR admin requires you to ask the following {len(custom_questions)} "
+            f"question(s) verbatim or with only minor rewording for tone, spread across "
+            f"the conversation. Do not skip them. Do not duplicate their topics in your "
+            f"own follow-ups:\n{rendered}\n"
+        )
+    finalize_block = ""
+    if force_finalize:
+        finalize_block = (
+            "\nThe question budget is exhausted. You MUST set conversation_done=true on "
+            "this turn and emit the final report_markdown now. Your reply_to_employee "
+            "should be a brief closing acknowledgement (the system will send a separate "
+            "completion message)."
+        )
     return (
         "You are a confidential employee pulse assistant helping HR identify workplace "
         "concerns early and take supportive action. Ask short, respectful follow-up "
         "questions. Do not sound accusatory. Do not make promises HR cannot keep. "
         "Do not diagnose medical or mental health conditions. Avoid collecting "
-        "unnecessary sensitive personal details. Ask at most 3 questions in total "
-        "(including the opening question already sent). After the employee answers "
-        "the third question, set conversation_done to true and produce the report. "
+        "unnecessary sensitive personal details. "
+        f"Ask at most {total_questions} question(s) in total (including the opening "
+        "question already sent). After the employee answers the final question, set "
+        "conversation_done to true and produce the report."
+        f"{custom_block}"
+        f"{finalize_block} "
         "Your goal is to capture how the employee feels about work, the main "
         "workplace concern, useful context for HR, and appropriate follow-up. "
         "Return only valid JSON with exactly these keys: reply_to_employee, "
@@ -98,23 +118,35 @@ def parse_llm_json(content: str) -> dict[str, Any]:
     report = parsed.get("report_markdown")
     if parsed["conversation_done"] and (not isinstance(report, str) or not report.strip()):
         raise LLMError("Completed LLM response is missing report_markdown")
-    if not parsed["conversation_done"] and report is not None:
-        raise LLMError("Incomplete LLM response must use null report_markdown")
     if isinstance(report, str):
         parsed["report_markdown"] = strip_markdown_fence(report)
     return parsed
 
 
-async def generate_bot_turn(employee: Employee, messages: list[Message]) -> dict[str, Any]:
+async def generate_bot_turn(
+    employee: Employee,
+    messages: list[Message],
+    total_questions: int = 3,
+    custom_questions: list[str] | None = None,
+    force_finalize: bool = False,
+) -> dict[str, Any]:
     client = _get_client()
-    logger.info("LLM call start: model=%s turn=%d employee=%s", settings.openrouter_model, len(messages), employee.name)
+    logger.info(
+        "LLM call start: model=%s turn=%d employee=%s budget=%d customs=%d finalize=%s",
+        settings.openrouter_model,
+        len(messages),
+        employee.name,
+        total_questions,
+        len(custom_questions or []),
+        force_finalize,
+    )
     started = time.perf_counter()
     try:
         response = await client.chat.completions.create(
             model=settings.openrouter_model,
             response_format={"type": "json_object"},
             messages=[
-                {"role": "system", "content": build_system_prompt()},
+                {"role": "system", "content": build_system_prompt(total_questions, custom_questions or [], force_finalize)},
                 {"role": "user", "content": build_conversation_context(employee, messages)},
             ],
         )
