@@ -15,16 +15,22 @@
   </div>
 </div>
 
-<section class="row g-4 mb-4">
-  <div class="col-12 col-xl-6">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body">
+<section class="card border-0 shadow-sm">
+  <div class="card-body">
     <h2 class="h5 mb-3">Profile</h2>
     <dl class="row mb-4">
       <dt class="col-sm-4 text-secondary">Email</dt><dd class="col-sm-8">{{ employee.email }}</dd>
       <dt class="col-sm-4 text-secondary">Manager</dt><dd class="col-sm-8">{{ employee.manager }}</dd>
       <dt class="col-sm-4 text-secondary">Phone</dt><dd class="col-sm-8">{{ employee.phone }}</dd>
       <dt class="col-sm-4 text-secondary">Current/latest check-in</dt><dd class="col-sm-8"><span class="badge text-bg-light border">{{ checkin_label }}</span></dd>
+      <dt class="col-sm-4 text-secondary">Latest report</dt>
+      <dd class="col-sm-8">
+        {% if latest_report %}
+        <a href="/admin/reports/{{ latest_report.id }}">Open report #{{ latest_report.id }}</a>
+        {% else %}
+        <span class="text-secondary">None yet</span>
+        {% endif %}
+      </dd>
     </dl>
     <div class="mb-3">
       <label class="form-label">Personalized Telegram deep link</label>
@@ -36,51 +42,6 @@
         <button type="submit" class="btn btn-outline-secondary">Regenerate deep link</button>
       </form>
     </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-12 col-xl-6">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body">
-    <h2 class="h5 mb-3">Latest Report</h2>
-    {% if latest_report %}
-    <div class="bg-light border rounded p-3 mb-3">{{ latest_report.report_markdown|nl2br }}</div>
-    <form method="post" action="/admin/employees/{{ employee.id }}/report-status" class="d-flex flex-wrap gap-2 align-items-center mb-3">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <select class="form-select w-auto" name="status">
-        {% for status in report_statuses %}
-        <option value="{{ status }}" {% if latest_report.status == status %}selected{% endif %}>{{ status|report_status_label }}</option>
-        {% endfor %}
-      </select>
-      <button type="submit" class="btn btn-outline-secondary">Update</button>
-    </form>
-    <a href="/admin/reports/{{ latest_report.id }}">Open report detail</a>
-    {% else %}
-    <p class="text-secondary mb-0">No report generated yet.</p>
-    {% endif %}
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="card border-0 shadow-sm">
-  <div class="card-body">
-  <h2 class="h5 mb-2">Conversation Transcript</h2>
-  {% if latest_session %}
-  <p class="text-secondary">Session #{{ latest_session.id }} · {{ latest_session.status.title() }}</p>
-  {% endif %}
-  <div class="vstack gap-3">
-    {% for message in messages %}
-    <article class="border-start border-4 {% if message.direction == 'employee' %}border-success{% elif message.direction == 'bot' %}border-primary{% else %}border-secondary{% endif %} bg-light rounded p-3">
-      <strong>{{ message.direction.title() }}</strong>
-      <p class="mb-1">{{ message.text }}</p>
-      <time class="small text-secondary">{{ message.created_at.strftime("%Y-%m-%d %H:%M") }}</time>
-    </article>
-    {% else %}
-    <p class="text-center text-secondary py-4 mb-0">No transcript yet.</p>
-    {% endfor %}
-  </div>
   </div>
 </section>
 {% endblock %}

@@ -9,13 +9,11 @@ from app.auth import require_admin_session, verify_csrf
 from app.bot_logic import (
     checkin_label,
     latest_report_for_employee,
-    latest_session_for_employee,
 )
 from app.config import settings
 from app.csv_import import ensure_onboarding_token, import_employees_from_csv, regenerate_onboarding_token
 from app.database import get_db
-from app.models import AdminSession, Employee, Message
-from app.reports import REPORT_STATUSES
+from app.models import AdminSession, Employee
 from app.web import templates
 
 
@@ -110,18 +108,6 @@ async def employee_detail(
     if not employee:
         return templates.TemplateResponse(request, "404.html", status_code=404)
     token = await ensure_onboarding_token(db, employee)
-    latest_session = await latest_session_for_employee(db, employee.id)
-    messages: list[Message] = []
-    if latest_session:
-        messages = list(
-            (
-                await db.execute(
-                    select(Message)
-                    .where(Message.session_id == latest_session.id)
-                    .order_by(Message.created_at.asc())
-                )
-            ).scalars().all()
-        )
     latest_report = await latest_report_for_employee(db, employee.id)
     label = await checkin_label(db, employee.id)
     await db.commit()
@@ -134,10 +120,7 @@ async def employee_detail(
             "employee": employee,
             "deep_link": deep_link_for_token(token.token),
             "checkin_label": label,
-            "latest_session": latest_session,
-            "messages": messages,
             "latest_report": latest_report,
-            "report_statuses": REPORT_STATUSES,
         },
     )
 
@@ -157,24 +140,3 @@ async def regenerate_link(
     return redirect_to(f"/admin/employees/{employee.id}", notice="Deep link regenerated.")
 
 
-@router.post("/employees/{employee_id}/report-status")
-async def update_latest_report_status(
-    employee_id: int,
-    csrf_token: str = Form(...),
-    status: str = Form(...),
-    db: AsyncSession = Depends(get_db),
-    session: AdminSession = Depends(require_admin_session),
-) -> RedirectResponse:
-    verify_csrf(session, csrf_token)
-    employee = await db.get(Employee, employee_id)
-    if not employee:
-        return redirect_to("/admin/employees", error="Employee not found.")
-    report = await latest_report_for_employee(db, employee.id)
-    if not report:
-        return redirect_to(f"/admin/employees/{employee.id}", error="No report exists for this employee.")
-    if status not in REPORT_STATUSES:
-        return redirect_to(f"/admin/employees/{employee.id}", error="Invalid report status.")
-    report.status = status
-    db.add(report)
-    await db.commit()
-    return redirect_to(f"/admin/employees/{employee.id}", notice="Report status updated.")
