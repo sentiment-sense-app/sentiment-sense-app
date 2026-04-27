@@ -36,7 +36,9 @@ async def send_employee_checkin(
     employee = await db.get(Employee, employee_id)
     if not employee:
         return redirect_to("/admin/employees", error="Employee not found.")
-    ok, message = await start_checkin_for_employee(db, TelegramClient(), employee, created_by_admin_id=session.admin_id)
+    ok, message = await start_checkin_for_employee(
+        db, TelegramClient(), employee, created_by_admin_id=session.admin_id, cancel_existing=True
+    )
     return redirect_to(f"/admin/employees/{employee.id}", notice=message if ok else None, error=None if ok else message)
 
 
@@ -53,7 +55,9 @@ async def send_all_checkins(
     skipped = 0
     warnings: list[str] = []
     for employee in employees:
-        ok, message = await start_checkin_for_employee(db, telegram, employee, created_by_admin_id=session.admin_id)
+        ok, message = await start_checkin_for_employee(
+            db, telegram, employee, created_by_admin_id=session.admin_id, cancel_existing=True
+        )
         if ok:
             sent += 1
         else:

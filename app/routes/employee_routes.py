@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_admin_session, verify_csrf
 from app.bot_logic import (
-    active_session_for_employee,
     checkin_label,
     latest_report_for_employee,
     latest_session_for_employee,
@@ -15,7 +14,7 @@ from app.bot_logic import (
 from app.config import settings
 from app.csv_import import ensure_onboarding_token, import_employees_from_csv, regenerate_onboarding_token
 from app.database import get_db
-from app.models import AdminSession, Employee, Message, now_utc
+from app.models import AdminSession, Employee, Message
 from app.reports import REPORT_STATUSES
 from app.web import templates
 
@@ -160,27 +159,6 @@ async def regenerate_link(
         return redirect_to("/admin/employees", error="Employee not found.")
     await regenerate_onboarding_token(db, employee)
     return redirect_to(f"/admin/employees/{employee.id}", notice="Deep link regenerated.")
-
-
-@router.post("/employees/{employee_id}/reset")
-async def reset_conversation(
-    employee_id: int,
-    csrf_token: str = Form(...),
-    db: AsyncSession = Depends(get_db),
-    session: AdminSession = Depends(require_admin_session),
-) -> RedirectResponse:
-    verify_csrf(session, csrf_token)
-    employee = await db.get(Employee, employee_id)
-    if not employee:
-        return redirect_to("/admin/employees", error="Employee not found.")
-    active = await active_session_for_employee(db, employee.id)
-    if not active:
-        return redirect_to(f"/admin/employees/{employee.id}", notice="No active conversation to reset.")
-    active.status = "cancelled"
-    active.cancelled_at = now_utc()
-    db.add(active)
-    await db.commit()
-    return redirect_to(f"/admin/employees/{employee.id}", notice="Active conversation cancelled.")
 
 
 @router.post("/employees/{employee_id}/report-status")
