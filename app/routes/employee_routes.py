@@ -81,26 +81,22 @@ async def import_form(
     )
 
 
-@router.post("/employees/import", response_class=HTMLResponse)
+@router.post("/employees/import")
 async def import_employees(
-    request: Request,
     csrf_token: str = Form(...),
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     session: AdminSession = Depends(require_admin_session),
-) -> HTMLResponse:
+) -> RedirectResponse:
     verify_csrf(session, csrf_token)
     content = await file.read()
     result = await import_employees_from_csv(db, content)
-    return templates.TemplateResponse(
-        request,
-        "import_employees.html",
-        {
-            "admin": session.admin,
-            "csrf_token": session.csrf_token,
-            "result": result,
-        },
-    )
+    parts = [f"Imported {result.imported}", f"updated {result.updated}"]
+    if result.failed:
+        parts.append(f"failed {result.failed}")
+    notice = ", ".join(parts) + "."
+    error = "; ".join(result.errors) if result.errors else None
+    return redirect_to("/admin/employees", notice=notice, error=error)
 
 
 @router.get("/employees/{employee_id}", response_class=HTMLResponse)

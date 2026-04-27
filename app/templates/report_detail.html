@@ -1,12 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Report #{{ report.id }} · Sentiment Sense{% endblock %}
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
-  <div>
-    <h1 class="h2 mb-1">Report #{{ report.id }}</h1>
-    <p class="text-secondary mb-0">{{ report.employee.name }} · {{ report.employee.department }} · {{ report.employee.project }}</p>
-  </div>
-  <a href="/admin/employees/{{ report.employee.id }}" class="btn btn-outline-secondary">Transcript</a>
+<div class="mb-4">
+  <h1 class="h2 mb-1">Report #{{ report.id }}</h1>
+  <p class="text-secondary mb-0">{{ report.employee.name }} · {{ report.employee.department }} · {{ report.employee.project }}</p>
 </div>
 
 <section class="row g-4 mb-4">
