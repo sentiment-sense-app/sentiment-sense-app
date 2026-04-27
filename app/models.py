@@ -72,12 +72,16 @@ class OnboardingToken(Base):
     employee: Mapped[Employee] = relationship(lazy="joined")
 
 
-class CheckinSession(Base):
-    __tablename__ = "checkin_sessions"
+class Survey(Base):
+    __tablename__ = "surveys"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True, nullable=False)
     status: Mapped[str] = mapped_column(String(50), default="active", index=True, nullable=False)
+    total_questions: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
+    custom_percent: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    custom_questions_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
+    turn_cap: Mapped[int] = mapped_column(Integer, default=4, nullable=False)
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -85,12 +89,14 @@ class CheckinSession(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, onupdate=now_utc, nullable=False)
 
+    employee: Mapped[Employee] = relationship(lazy="joined")
+
 
 class Message(Base):
     __tablename__ = "messages"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    session_id: Mapped[int | None] = mapped_column(ForeignKey("checkin_sessions.id"), index=True, nullable=True)
+    survey_id: Mapped[int | None] = mapped_column(ForeignKey("surveys.id"), index=True, nullable=True)
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True, nullable=False)
     telegram_update_id: Mapped[int | None] = mapped_column(Integer, index=True, nullable=True)
     telegram_message_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -102,10 +108,10 @@ class Message(Base):
 
 class Report(Base):
     __tablename__ = "reports"
-    __table_args__ = (UniqueConstraint("session_id", name="uq_reports_session_id"),)
+    __table_args__ = (UniqueConstraint("survey_id", name="uq_reports_survey_id"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    session_id: Mapped[int] = mapped_column(ForeignKey("checkin_sessions.id"), nullable=False)
+    survey_id: Mapped[int] = mapped_column(ForeignKey("surveys.id"), nullable=False)
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True, nullable=False)
     report_markdown: Mapped[str] = mapped_column(Text, nullable=False)
     hr_notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
