@@ -4,14 +4,15 @@
 <div class="mb-4">
   <div>
     <h1 class="h2 mb-1">Import Employees</h1>
-    <p class="text-secondary mb-0">CSV columns: name, email, department, manager, project, role, phone.</p>
+    <p class="text-secondary mb-0">Upload a UTF-8 CSV. Existing employees (matched by email) are updated in place.</p>
   </div>
 </div>
 
-<section class="row mb-4">
-  <div class="col-12 col-md-8 col-lg-6">
-    <div class="card border-0 shadow-sm">
+<section class="row g-4 mb-4">
+  <div class="col-12 col-lg-6">
+    <div class="card border-0 shadow-sm h-100">
       <div class="card-body">
+        <h2 class="h6 mb-3">Upload CSV</h2>
         <form method="post" action="/admin/employees/import" enctype="multipart/form-data" class="vstack gap-3">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <div>
@@ -20,6 +21,27 @@
           </div>
           <button type="submit" class="btn btn-success">Import</button>
         </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h6 mb-3">Required columns</h2>
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr><th>Column</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>name</code></td><td>Full name</td></tr>
+            <tr><td><code>email</code></td><td>Unique; used as the import key</td></tr>
+            <tr><td><code>department</code></td><td>e.g. Engineering, People Ops</td></tr>
+            <tr><td><code>manager</code></td><td>Reporting manager's name</td></tr>
+            <tr><td><code>project</code></td><td>Current project or team</td></tr>
+            <tr><td><code>role</code></td><td>Job title</td></tr>
+            <tr><td><code>phone</code></td><td>Stored for HR records (not used by the bot)</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
