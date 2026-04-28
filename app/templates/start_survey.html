@@ -55,8 +55,9 @@
       <div class="card-body">
         <h2 class="h6 mb-3">How it works</h2>
         <ul class="small text-secondary mb-0">
-          <li>Sending cancels any in-progress survey for this employee.</li>
-          <li>The bot DMs the employee on Telegram with the first question right away.</li>
+          <li>Sending cancels any queued or in-progress survey for this employee.</li>
+          <li>If the employee is already connected on Telegram, the first question goes out immediately.</li>
+          <li>If they haven't opened their onboarding link yet, the survey is queued and starts the moment they do.</li>
           <li>If you provide custom questions, the bot weaves them in without duplicating.</li>
           <li>Bot will allow up to 20% extra turns beyond your question count if it needs follow-ups.</li>
           <li>When the survey ends, an HR-facing report is generated automatically.</li>

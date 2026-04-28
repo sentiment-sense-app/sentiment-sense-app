@@ -62,7 +62,18 @@ async def active_survey_for_employee(db: AsyncSession, employee_id: int) -> Surv
             .where(Survey.status == "active")
             .order_by(Survey.created_at.desc())
         )
-    ).scalar_one_or_none()
+    ).scalars().first()
+
+
+async def pending_survey_for_employee(db: AsyncSession, employee_id: int) -> Survey | None:
+    return (
+        await db.execute(
+            select(Survey)
+            .where(Survey.employee_id == employee_id)
+            .where(Survey.status == "pending")
+            .order_by(Survey.created_at.desc())
+        )
+    ).scalars().first()
 
 
 async def latest_survey_for_employee(db: AsyncSession, employee_id: int) -> Survey | None:
@@ -91,6 +102,8 @@ async def survey_label(db: AsyncSession, employee_id: int) -> str:
         return "Not started"
     if survey.status == "active":
         return "Active"
+    if survey.status == "pending":
+        return "Pending"
     if survey.status == "completed":
         return "Completed"
     return "Not started"
@@ -136,22 +149,22 @@ async def start_survey_for_employee(
     custom_questions: list[str] | None = None,
     custom_percent: int = 0,
 ) -> tuple[bool, str]:
-    if not employee.telegram_chat_id:
-        return False, "Cannot send survey yet. Ask the employee to open their onboarding link first."
-
     existing = await active_survey_for_employee(db, employee.id)
-    if existing and not cancel_existing:
-        return False, "An active survey already exists for this employee."
-    if existing and cancel_existing:
-        existing.status = "cancelled"
-        existing.cancelled_at = now_utc()
-        db.add(existing)
+    pending = await pending_survey_for_employee(db, employee.id)
+    if (existing or pending) and not cancel_existing:
+        return False, "A survey is already queued or active for this employee."
+    for prior in (existing, pending):
+        if prior and cancel_existing:
+            prior.status = "cancelled"
+            prior.cancelled_at = now_utc()
+            db.add(prior)
 
     customs = pick_custom_questions(custom_questions or [], total_questions, custom_percent)
+    has_chat = bool(employee.telegram_chat_id)
     survey = Survey(
         employee_id=employee.id,
-        status="active",
-        started_at=now_utc(),
+        status="active" if has_chat else "pending",
+        started_at=now_utc() if has_chat else None,
         created_by_admin_id=created_by_admin_id,
         total_questions=total_questions,
         custom_percent=custom_percent,
@@ -160,6 +173,11 @@ async def start_survey_for_employee(
     )
     db.add(survey)
     await db.flush()
+
+    if not has_chat:
+        await db.commit()
+        return True, "Survey queued. It will start when the employee opens their onboarding link."
+
     first_message = _opening_question(employee, customs)
     await store_message(db, employee, survey, "bot", first_message)
 
@@ -173,6 +191,29 @@ async def start_survey_for_employee(
 
     await db.commit()
     return True, "Survey sent."
+
+
+async def _activate_pending_survey(
+    db: AsyncSession,
+    telegram: TelegramClient,
+    employee: Employee,
+    survey: Survey,
+) -> None:
+    customs = json.loads(survey.custom_questions_json or "[]")
+    survey.status = "active"
+    survey.started_at = now_utc()
+    db.add(survey)
+    first_message = _opening_question(employee, customs)
+    await store_message(db, employee, survey, "bot", first_message)
+    try:
+        await telegram.send_message(employee.telegram_chat_id, first_message)
+    except TelegramAPIError as exc:
+        logger.warning("Failed to send opening message for survey %s: %s", survey.id, exc)
+        survey.status = "failed"
+        db.add(survey)
+        await db.commit()
+        return
+    await db.commit()
 
 
 async def handle_start_command(
@@ -215,7 +256,15 @@ async def handle_start_command(
     await db.commit()
 
     await telegram.send_message(chat_id, INTRO_MESSAGE)
-    await start_survey_for_employee(db, telegram, employee, cancel_existing=True)
+
+    pending = await pending_survey_for_employee(db, employee.id)
+    if pending:
+        await _activate_pending_survey(db, telegram, employee, pending)
+    else:
+        await telegram.send_message(
+            chat_id,
+            "You're connected. HR will start a survey when one is ready — no action needed from you right now.",
+        )
 
 
 async def handle_restart_command(db: AsyncSession, telegram: TelegramClient, employee: Employee) -> None:

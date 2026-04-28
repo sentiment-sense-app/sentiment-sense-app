@@ -39,8 +39,8 @@ Open http://localhost:8000. Admin user is seeded from `ADMIN_EMAIL` / `ADMIN_PAS
 
 1. Admin logs in, imports employees from CSV (required: `name`, `email`, `department`, `manager`, `project`, `role`, `phone`). A ready-to-use `demo_employees.csv` ships in the repo for quick testing.
 2. Each employee gets a personalized Telegram deep link `https://t.me/<bot>?start=<token>`.
-3. Admin sends the link to the employee out-of-band. Employee opens it and presses Start; the bot stores their `chat_id` and an initial survey begins automatically (3 AI-generated questions).
-4. Admin can also click **Send survey** on the admin UI at any time. The form lets them set total questions, % of questions to draw from a custom list (manual textarea or CSV upload), and the bot weaves them in. Sending cancels any in-progress survey for that employee.
+3. Admin clicks **Send survey** on the employees page → form for total questions, % from custom list (manual textarea or CSV upload). If the employee is already connected on Telegram, the first question is sent immediately. If not, the survey is queued.
+4. Admin sends the deep link to the employee out-of-band. Employee opens it and presses Start; the bot stores their `chat_id`. If a queued survey is waiting, it activates and the first question goes out right away — otherwise the bot just confirms they're connected and waits for HR.
 5. Employee replies on Telegram. The LLM asks follow-ups up to the question budget; the bot allows up to 20% extra turns for tactful follow-ups before force-finalizing. When the survey ends, an HR-facing Markdown report is saved and a "survey complete" message is sent to the employee.
 6. Admin reviews surveys on the dashboard (grouped by employee), marks them `open` / `reviewed` / `resolved` / `dismissed`, and exports CSV.
 
