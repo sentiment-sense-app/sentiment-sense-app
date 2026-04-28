@@ -13,7 +13,7 @@
   <div class="col-12 col-lg-7">
     <div class="card border-0 shadow-sm">
       <div class="card-body">
-        <form method="post" action="/admin/employees/{{ employee.id }}/start-survey" enctype="multipart/form-data" class="vstack gap-4">
+        <form id="send-survey-form" method="post" action="/admin/employees/{{ employee.id }}/start-survey" enctype="multipart/form-data" class="vstack gap-4">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
           <div class="row g-3">
@@ -30,15 +30,22 @@
           </div>
 
           <div>
-            <label class="form-label">Custom questions (one per line)</label>
-            <textarea class="form-control" name="custom_questions_text" rows="6" placeholder="How well-supported do you feel by your manager?&#10;Is your current workload sustainable?"></textarea>
-            <div class="form-text">Optional. Combined with any uploaded CSV. Selection is randomized per survey.</div>
-          </div>
-
-          <div>
-            <label class="form-label">Upload CSV (optional)</label>
-            <input type="file" class="form-control" name="custom_questions_file" accept=".csv,text/csv">
-            <div class="form-text">Single column. Header row <code>question</code> is auto-skipped.</div>
+            <label class="form-label">Custom questions</label>
+            <div class="input-group mb-2">
+              <input type="text" class="form-control" id="question-input" placeholder="Type a question and press Enter">
+              <button type="button" class="btn btn-outline-secondary" id="question-add-btn">Add</button>
+            </div>
+            <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+              <label class="btn btn-outline-secondary btn-sm mb-0">
+                Upload CSV
+                <input type="file" id="question-csv-input" accept=".csv,text/csv" hidden>
+              </label>
+              <button type="button" class="btn btn-outline-danger btn-sm" id="question-clear-btn" hidden>Clear all</button>
+              <span class="text-secondary small ms-auto" id="question-count"></span>
+            </div>
+            <ul class="list-group mb-2" id="question-list"></ul>
+            <div class="text-secondary small" id="question-empty-hint">Optional. Single CSV column; header row <code>question</code> is auto-skipped. Selection is randomized per survey based on the % above.</div>
+            <textarea class="form-control" name="custom_questions_text" id="custom-questions-text" rows="6" hidden></textarea>
           </div>
 
           <div class="d-flex gap-2">
@@ -66,4 +73,90 @@
     </div>
   </div>
 </section>
+
+<script>
+(() => {
+  const list = document.getElementById("question-list");
+  const input = document.getElementById("question-input");
+  const addBtn = document.getElementById("question-add-btn");
+  const csvInput = document.getElementById("question-csv-input");
+  const clearBtn = document.getElementById("question-clear-btn");
+  const emptyHint = document.getElementById("question-empty-hint");
+  const count = document.getElementById("question-count");
+  const hiddenText = document.getElementById("custom-questions-text");
+
+  const questions = [];
+
+  const render = () => {
+    list.innerHTML = "";
+    questions.forEach((q, i) => {
+      const li = document.createElement("li");
+      li.className = "list-group-item d-flex justify-content-between align-items-start gap-2";
+      const span = document.createElement("span");
+      span.className = "flex-grow-1";
+      span.textContent = q;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn-close";
+      btn.setAttribute("aria-label", "Remove question");
+      btn.addEventListener("click", () => {
+        questions.splice(i, 1);
+        render();
+      });
+      li.appendChild(span);
+      li.appendChild(btn);
+      list.appendChild(li);
+    });
+    const has = questions.length > 0;
+    clearBtn.hidden = !has;
+    emptyHint.hidden = has;
+    count.textContent = has ? `${questions.length} question${questions.length === 1 ? "" : "s"}` : "";
+    hiddenText.value = questions.join("\n");
+  };
+
+  const addQuestion = (text) => {
+    const trimmed = (text || "").trim();
+    if (!trimmed) return;
+    questions.push(trimmed);
+  };
+
+  const addMany = (lines) => {
+    lines.forEach(addQuestion);
+    render();
+  };
+
+  addBtn.addEventListener("click", () => {
+    addQuestion(input.value);
+    input.value = "";
+    render();
+    input.focus();
+  });
+
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      addBtn.click();
+    }
+  });
+
+  clearBtn.addEventListener("click", () => {
+    questions.length = 0;
+    render();
+  });
+
+  csvInput.addEventListener("change", async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    const text = await file.text();
+    const lines = text.split(/\r?\n/).map((raw) => {
+      const first = raw.split(",", 1)[0].trim().replace(/^['"]|['"]$/g, "");
+      return first;
+    }).filter((line, idx) => line && !(idx === 0 && /^questions?$/i.test(line)));
+    addMany(lines);
+    csvInput.value = "";
+  });
+
+  render();
+})();
+</script>
 {% endblock %}
