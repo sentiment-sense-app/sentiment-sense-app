@@ -45,9 +45,7 @@ def build_system_prompt(total_questions: int, custom_questions: list[str], force
     if force_finalize:
         finalize_block = (
             "\nThe question budget is exhausted. You MUST set conversation_done=true on "
-            "this turn and emit the final report_markdown now. Your reply_to_employee "
-            "should be a brief closing acknowledgement (the system will send a separate "
-            "completion message)."
+            "this turn and emit the final report_markdown now."
         )
     return (
         "You are a confidential employee pulse assistant helping HR identify workplace "
@@ -55,9 +53,15 @@ def build_system_prompt(total_questions: int, custom_questions: list[str], force
         "questions. Do not sound accusatory. Do not make promises HR cannot keep. "
         "Do not diagnose medical or mental health conditions. Avoid collecting "
         "unnecessary sensitive personal details. "
-        f"Ask at most {total_questions} question(s) in total (including the opening "
-        "question already sent). After the employee answers the final question, set "
-        "conversation_done to true and produce the report."
+        f"You have a budget of {total_questions} question(s) total, INCLUDING the "
+        "opening question already sent. While questions remain in the budget, set "
+        "conversation_done=false and put your next question (custom or follow-up) in "
+        "reply_to_employee. After the employee has answered the final question in the "
+        "budget, set conversation_done=true. On that closing turn, reply_to_employee "
+        "MUST be a brief, warm acknowledgement (e.g., \"Thanks for sharing — your input "
+        "has been recorded confidentially.\") and MUST NOT contain a new question or "
+        "any sentence ending in '?'. The system will send the survey-complete message "
+        "right after your acknowledgement."
         f"{custom_block}"
         f"{finalize_block} "
         "Your goal is to capture how the employee feels about work, the main "

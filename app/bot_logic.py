@@ -38,7 +38,8 @@ SURVEY_COMPLETE_MESSAGE = (
 )
 
 DEFAULT_TOTAL_QUESTIONS = 3
-TURN_CAP_MULTIPLIER = 1.2
+TURN_CAP_BUFFER_PCT = 20
+TURN_CAP_MIN_BUFFER = 2
 
 SURVEY_STATUSES = ["pending", "active", "completed", "cancelled", "failed"]
 
@@ -48,7 +49,8 @@ def survey_status_label(status: str) -> str:
 
 
 def compute_turn_cap(total_questions: int) -> int:
-    return max(total_questions, math.ceil(total_questions * TURN_CAP_MULTIPLIER))
+    extra = max(TURN_CAP_MIN_BUFFER, math.ceil(total_questions * TURN_CAP_BUFFER_PCT / 100))
+    return total_questions + extra
 
 
 def pick_custom_questions(custom_questions: list[str], total_questions: int, custom_percent: int) -> list[str]:
