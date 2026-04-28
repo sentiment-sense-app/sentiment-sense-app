@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_admin_session, verify_csrf
 from app.database import get_db
-from app.models import AdminSession, Message, Report
+from app.models import AdminSession, Message, Report, Survey
 from app.reports import REPORT_STATUSES, export_reports_csv
 from app.web import templates
 
@@ -38,6 +38,7 @@ async def survey_detail(
     report = await db.get(Report, report_id)
     if not report:
         return templates.TemplateResponse(request, "404.html", status_code=404)
+    survey = await db.get(Survey, report.survey_id)
     messages = (
         await db.execute(
             select(Message).where(Message.survey_id == report.survey_id).order_by(Message.created_at.asc())
@@ -50,6 +51,7 @@ async def survey_detail(
             "admin": session.admin,
             "csrf_token": session.csrf_token,
             "report": report,
+            "survey": survey,
             "messages": messages,
             "report_statuses": REPORT_STATUSES,
         },

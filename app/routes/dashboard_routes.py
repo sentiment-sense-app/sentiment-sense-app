@@ -20,6 +20,18 @@ async def root() -> RedirectResponse:
     return RedirectResponse("/admin", status_code=303)
 
 
+@router.get("/admin/docs", response_class=HTMLResponse)
+async def docs(
+    request: Request,
+    session: AdminSession = Depends(require_admin_session),
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "docs.html",
+        {"admin": session.admin, "csrf_token": session.csrf_token},
+    )
+
+
 @router.get("/admin", response_class=HTMLResponse)
 async def dashboard(
     request: Request,

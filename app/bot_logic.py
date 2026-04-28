@@ -336,13 +336,17 @@ async def handle_employee_message(
     customs = json.loads(survey.custom_questions_json or "[]")
 
     try:
-        decision = await generate_bot_turn(
+        decision, usage = await generate_bot_turn(
             employee,
             list(messages),
             total_questions=survey.total_questions,
             custom_questions=customs,
             force_finalize=force_finalize,
         )
+        survey.prompt_tokens += usage["prompt_tokens"]
+        survey.completion_tokens += usage["completion_tokens"]
+        survey.cost_usd += usage["cost_usd"]
+        db.add(survey)
     except LLMError as exc:
         logger.warning("LLM failed for survey %s: %s", survey.id, exc)
         if force_finalize:

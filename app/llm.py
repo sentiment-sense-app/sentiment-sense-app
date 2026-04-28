@@ -134,13 +134,25 @@ def parse_llm_json(content: str) -> dict[str, Any]:
     return parsed
 
 
+def _extract_usage(response: Any) -> dict[str, Any]:
+    usage = getattr(response, "usage", None)
+    if not usage:
+        return {"prompt_tokens": 0, "completion_tokens": 0, "cost_usd": 0.0}
+    raw = usage.model_dump() if hasattr(usage, "model_dump") else dict(usage)
+    return {
+        "prompt_tokens": int(raw.get("prompt_tokens") or 0),
+        "completion_tokens": int(raw.get("completion_tokens") or 0),
+        "cost_usd": float(raw.get("cost") or 0),
+    }
+
+
 async def generate_bot_turn(
     employee: Employee,
     messages: list[Message],
     total_questions: int = 3,
     custom_questions: list[str] | None = None,
     force_finalize: bool = False,
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], dict[str, Any]]:
     client = _get_client()
     logger.info(
         "LLM call start: model=%s turn=%d employee=%s budget=%d customs=%d finalize=%s",
@@ -166,8 +178,13 @@ async def generate_bot_turn(
         logger.warning("LLM call failed after %.2fs: %s", elapsed, exc)
         raise LLMError(f"LLM request failed: {exc}") from exc
     elapsed = time.perf_counter() - started
-    usage = getattr(response, "usage", None)
-    tokens = f"in={usage.prompt_tokens} out={usage.completion_tokens}" if usage else "tokens=?"
-    logger.info("LLM call done in %.2fs (%s)", elapsed, tokens)
+    usage = _extract_usage(response)
+    logger.info(
+        "LLM call done in %.2fs (in=%d out=%d cost=$%.6f)",
+        elapsed,
+        usage["prompt_tokens"],
+        usage["completion_tokens"],
+        usage["cost_usd"],
+    )
     content = response.choices[0].message.content or ""
-    return parse_llm_json(content)
+    return parse_llm_json(content), usage

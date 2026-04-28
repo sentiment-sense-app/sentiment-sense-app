@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}Docs · Sentiment Sense{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+  <div>
+    <h1 class="h2 mb-1">Site admin docs</h1>
+    <p class="text-secondary mb-0">How Sentiment Sense works end-to-end. Read once before running it for HR.</p>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-12 col-lg-3">
+    <div class="card border-0 shadow-sm position-sticky" style="top: 80px;">
+      <div class="card-body">
+        <h2 class="h6 mb-3">On this page</h2>
+        <ul class="list-unstyled small mb-0">
+          <li><a href="#overview">Overview</a></li>
+          <li><a href="#onboarding">Employee onboarding</a></li>
+          <li><a href="#sending-surveys">Sending a survey</a></li>
+          <li><a href="#survey-lifecycle">Survey lifecycle</a></li>
+          <li><a href="#bot-behavior">Bot behavior</a></li>
+          <li><a href="#custom-questions">Custom questions</a></li>
+          <li><a href="#reports">Reports</a></li>
+          <li><a href="#ai-usage">AI usage tracking</a></li>
+          <li><a href="#telegram-commands">Telegram commands</a></li>
+          <li><a href="#troubleshooting">Troubleshooting</a></li>
+          <li><a href="#privacy">Privacy &amp; safety</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-9">
+    <section id="overview" class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <h2 class="h4 mb-3">Overview</h2>
+        <p>Sentiment Sense runs short, conversational pulse surveys with employees over Telegram and produces an HR-facing report from each conversation. The flow is: import or add an employee, share their onboarding link, send a survey, the bot conducts it, and a report appears on the dashboard for HR to review.</p>
+        <p class="mb-0">Everything that the bot says or asks comes from the configured LLM model, except for the opening message and the survey-complete acknowledgement, which are templated.</p>
+      </div>
+    </section>
+
+    <section id="onboarding" class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <h2 class="h4 mb-3">Employee onboarding</h2>
+        <ol>
+          <li><strong>Add the employee.</strong> Either bulk import via <a href="/admin/employees/import">CSV</a> or add one at a time via <a href="/admin/employees/new">Add employee</a>. Email must be unique. CSV re-uploads update existing rows by email; the form rejects duplicates.</li>
+          <li><strong>Copy the onboarding link.</strong> Each employee gets a unique deep link of the form <code>https://t.me/&lt;bot&gt;?start=&lt;token&gt;</code>. Find it on the <a href="/admin/employees">Employees</a> page (Copy link button) or on the employee detail page.</li>
+          <li><strong>Employee opens the link.</strong> They tap Start in Telegram. The bot stores their chat ID, marks the token used, sends an intro message, and either activates a queued survey (see below) or tells them HR will reach out when needed.</li>
+          <li><strong>Regenerate if needed.</strong> Lost the link, or want to invalidate it? Use the Regenerate button on the employee detail page. The old token is revoked.</li>
+        </ol>
+        <p class="mb-0 text-secondary small">There is no difference between CSV-imported and form-added employees once they exist — same onboarding link, same survey behavior.</p>
+      </div>
+    </section>
+
+    <section id="sending-surveys" class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <h2 class="h4 mb-3">Sending a survey</h2>
+        <p>From an employee detail page, click <strong>Send survey</strong>. You configure:</p>
+        <ul>
+          <li><strong>Total questions</strong> — how many questions the bot may ask (1–20). Includes the opening question.</li>
+          <li><strong>% from custom questions</strong> — share of total questions taken from your custom list. The rest are AI-generated. 0% means fully AI-driven.</li>
+          <li><strong>Custom questions</strong> — type one at a time, or upload a single-column CSV (header <code>question</code> is auto-skipped). You can delete individual entries or clear all before sending.</li>
+        </ul>
+        <p>Two scenarios on submit:</p>
+        <ul class="mb-0">
+          <li>If the employee has connected Telegram, the survey starts immediately and the first question is sent.</li>
+          <li>If they haven't yet, the survey is <strong>queued as Pending</strong> and starts the moment they open their onboarding link.</li>
+        </ul>
+        <p class="mt-3 mb-0">Sending a new survey cancels any prior pending or active survey for that employee.</p>
+      </div>
+    </section>
+
+    <section id="survey-lifecycle" class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <h2 class="h4 mb-3">Survey lifecycle</h2>
+        <p>Survey status appears on the dashboard. The states are:</p>
+        <ul class="mb-0">
+          <li><strong>Pending</strong> — configured but waiting for the employee to open their onboarding link.</li>
+          <li><strong>Active</strong> — bot is mid-conversation with the employee.</li>
+          <li><strong>Completed</strong> — bot wrapped up cleanly; report has been generated.</li>
+          <li><strong>Cancelled</strong> — superseded by a newer survey, or cancelled manually (Telegram <code>/cancel</code>).</li>
+          <li><strong>Failed</strong> — Telegram send error or LLM produced an unrecoverable response. The placeholder report still gets saved so the transcript is reviewable.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="bot-behavior" class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <h2 class="h4 mb-3">Bot behavior</h2>
+        <p>The bot conducts the survey one turn at a time, deciding whether to ask the next question or wrap up based on the question budget you set.</p>
+        <ul>
+          <li>The first question is always sent at survey start (templated, includes employee name).</li>
+          <li>Subsequent questions come from the LLM, which is told the budget and the custom-question list.</li>
+          <li>After the employee answers the final question, the bot sends a brief warm acknowledgement and the system follows it with a fixed survey-complete message.</li>
+          <li>The bot has a small extra-turn buffer (at least 2, more for longer surveys) so it can handle a follow-up if needed and always close gracefully.</li>
+          <li>If the LLM fails on the closing turn, a placeholder report is saved and the survey is marked Failed so HR knows to review the transcript.</li>
+        </ul>
+        <p class="mb-0 text-secondary small">The bot will not promise HR action, diagnose health conditions, or pry into sensitive personal details. It is instructed to ground the report in the actual conversation and the employee's stored profile only — no fabricated specifics.</p>
+      </div>
+    </section>
+
+    <section id="custom-questions" class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <h2 class="h4 mb-3">Custom questions</h2>
+        <p>Use custom questions when HR needs to hear about specific topics in this survey wave (e.g. compliance, a recent reorg, project launch).</p>
+        <ul class="mb-0">
+          <li>Selection is randomized per survey based on the % you set. If 50% of 4 total = 2, two random questions from your list are picked; the other two are AI-generated.</li>
+          <li>The bot is instructed to ask custom questions verbatim or with minor rewording, and not to duplicate their topics in its own follow-ups.</li>
+          <li>0% means fully AI-driven; 100% means all questions come from your list (capped by total).</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="reports" class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <h2 class="h4 mb-3">Reports</h2>
+        <p>Each completed survey produces a Markdown report with these sections: Summary, Sentiment, Key Themes, Notable Quotes, Suggested Follow-up.</p>
+        <ul class="mb-0">
+          <li>View by clicking <strong>View report</strong> on any dashboard row that has one. Pending/active surveys show a dash.</li>
+          <li>Reports have their own status — <em>Open</em> (default), <em>Reviewed</em>, <em>Resolved</em>, <em>Dismissed</em>. Update from the report detail page along with HR notes.</li>
+          <li>Export all reports (with employee context) via the <strong>Export CSV</strong> button on the dashboard.</li>
+          <li>The report and the full message transcript are both visible on the report detail page.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="ai-usage" class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <h2 class="h4 mb-3">AI usage tracking</h2>
+        <p class="mb-0">Each survey records prompt/completion tokens and an estimated cost from the configured OpenRouter model. The figures are visible on the report detail page (hover the usage info icon for the breakdown). Use these to track per-survey cost during the demo.</p>
+      </div>
+    </section>
+
+    <section id="telegram-commands" class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <h2 class="h4 mb-3">Telegram commands (employee side)</h2>
+        <ul class="mb-0">
+          <li><code>/start &lt;token&gt;</code> — used by the onboarding deep link; binds the chat to the employee record.</li>
+          <li><code>/restart</code> or <code>/reset</code> — start a fresh test survey (cancels any in-progress one). Useful for demos.</li>
+          <li><code>/cancel</code> — cancel the current active survey.</li>
+          <li><code>/help</code> — short usage reminder.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="troubleshooting" class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <h2 class="h4 mb-3">Troubleshooting</h2>
+        <ul class="mb-0">
+          <li><strong>Employee never receives a survey.</strong> Check they opened their onboarding link (the survey shows Pending until they do). Re-copy the link from the employee page if needed.</li>
+          <li><strong>"This onboarding link is invalid or expired."</strong> Token was revoked or already bound to a different chat. Regenerate from the employee detail page.</li>
+          <li><strong>Survey marked Failed.</strong> Either the LLM call failed at finalize or Telegram returned an error. Open the report (a placeholder will be saved) and review the transcript manually.</li>
+          <li><strong>Bot replied "There is no active survey right now."</strong> The employee messaged the bot outside of an active survey. They can use <code>/restart</code> to start a default one for testing, or HR can send a fresh one.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="privacy" class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <h2 class="h4 mb-3">Privacy &amp; safety</h2>
+        <ul class="mb-0">
+          <li>The intro message tells the employee that responses may be summarized for HR. Make sure the employee population has been informed before running waves.</li>
+          <li>Phone numbers are stored for HR records only; the bot never uses them.</li>
+          <li>Reports contain verbatim employee quotes. Treat the report and transcript as confidential HR data — restrict who can log into the admin UI.</li>
+          <li>The bot is instructed to avoid medical/mental-health diagnosis and unnecessary sensitive personal questions. If something concerning surfaces, escalate to HR following your existing process; the tool is a signal, not a triage system.</li>
+        </ul>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
