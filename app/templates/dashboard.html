@@ -6,7 +6,7 @@
     <h1 class="h2 mb-1">Dashboard</h1>
     <p class="text-secondary mb-0">Workplace sentiment surveys and HR-facing reports.</p>
   </div>
-  <a href="/admin/surveys.csv{% if selected_status %}?status={{ selected_status }}{% endif %}" class="btn btn-success">Export CSV</a>
+  <a href="/admin/surveys.csv" class="btn btn-success">Export CSV</a>
 </div>
 
 <div class="row g-3 mb-4">
@@ -24,8 +24,8 @@
       <label class="col-form-label col-form-label-sm text-secondary mb-0">Status</label>
       <select class="form-select form-select-sm" name="status" onchange="this.form.submit()">
         <option value="">All</option>
-        {% for status in report_statuses %}
-        <option value="{{ status }}" {% if selected_status == status %}selected{% endif %}>{{ status|report_status_label }}</option>
+        {% for status in survey_statuses %}
+        <option value="{{ status }}" {% if selected_status == status %}selected{% endif %}>{{ status|survey_status_label }}</option>
         {% endfor %}
       </select>
       <noscript><button type="submit" class="btn btn-sm btn-outline-secondary">Filter</button></noscript>
@@ -40,29 +40,39 @@
           <th>Project</th>
           <th>Status</th>
           <th>Created</th>
+          <th>Report</th>
         </tr>
       </thead>
       <tbody>
         {% set ns = namespace(prev_emp=None) %}
-        {% for report in reports %}
-        {% set new_group = report.employee_id != ns.prev_emp %}
+        {% for row in rows %}
+        {% set survey = row.survey %}
+        {% set report = row.report %}
+        {% set new_group = survey.employee_id != ns.prev_emp %}
         <tr{% if new_group and not loop.first %} class="border-top border-2"{% endif %}>
-          <td class="fw-semibold">{% if new_group %}{{ report.employee.name }}{% endif %}</td>
-          <td>{% if new_group %}{{ report.employee.department }}{% endif %}</td>
-          <td>{% if new_group %}{{ report.employee.project }}{% endif %}</td>
-          <td><a href="/admin/surveys/{{ report.id }}"><span class="badge text-bg-secondary">{{ report.status|report_status_label }}</span></a></td>
-          <td>{{ report.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+          <td class="fw-semibold">{% if new_group %}{{ survey.employee.name }}{% endif %}</td>
+          <td>{% if new_group %}{{ survey.employee.department }}{% endif %}</td>
+          <td>{% if new_group %}{{ survey.employee.project }}{% endif %}</td>
+          <td><span class="badge text-bg-secondary">{{ survey.status|survey_status_label }}</span></td>
+          <td>{{ survey.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+          <td>
+            {% if report %}
+            <a class="btn btn-sm btn-outline-secondary" href="/admin/surveys/{{ report.id }}">View report</a>
+            {% else %}
+            <span class="text-secondary">—</span>
+            {% endif %}
+          </td>
         </tr>
-        {% set ns.prev_emp = report.employee_id %}
+        {% set ns.prev_emp = survey.employee_id %}
         {% else %}
-        <tr><td colspan="5" class="text-center text-secondary py-4">No surveys completed yet.</td></tr>
+        <tr><td colspan="6" class="text-center text-secondary py-4">No surveys yet.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
   {% if total_pages > 1 %}
   <div class="card-footer bg-white d-flex justify-content-between align-items-center">
-    <div class="text-secondary small">Page {{ page }} of {{ total_pages }} ({{ total_reports }} surveys)</div>
+    <div class="text-secondary small">Page {{ page }} of {{ total_pages }} ({{ total_surveys }} surveys)</div>
     <nav>
       <ul class="pagination pagination-sm mb-0">
         <li class="page-item {% if page <= 1 %}disabled{% endif %}">

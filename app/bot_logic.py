@@ -40,6 +40,12 @@ SURVEY_COMPLETE_MESSAGE = (
 DEFAULT_TOTAL_QUESTIONS = 3
 TURN_CAP_MULTIPLIER = 1.2
 
+SURVEY_STATUSES = ["pending", "active", "completed", "cancelled", "failed"]
+
+
+def survey_status_label(status: str) -> str:
+    return (status or "").replace("_", " ").title() or "—"
+
 
 def compute_turn_cap(total_questions: int) -> int:
     return max(total_questions, math.ceil(total_questions * TURN_CAP_MULTIPLIER))

@@ -4,15 +4,15 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_admin_session
+from app.bot_logic import SURVEY_STATUSES
 from app.database import get_db
 from app.models import AdminSession, Employee, Report, Survey
-from app.reports import REPORT_STATUSES
 from app.web import templates
 
 
 router = APIRouter()
 
-REPORTS_PER_PAGE = 20
+SURVEYS_PER_PAGE = 20
 
 
 @router.get("/")
@@ -36,23 +36,27 @@ async def dashboard(
         "open_reports": (await db.execute(select(func.count(Report.id)).where(Report.status == "open"))).scalar() or 0,
     }
 
-    selected_status = status if status in REPORT_STATUSES else None
+    selected_status = status if status in SURVEY_STATUSES else None
     page = max(page, 1)
     base_query = (
-        select(Report)
-        .join(Employee, Employee.id == Report.employee_id)
-        .order_by(Employee.name.asc(), Report.created_at.desc())
+        select(Survey, Report)
+        .join(Employee, Employee.id == Survey.employee_id)
+        .outerjoin(Report, Report.survey_id == Survey.id)
+        .order_by(Employee.name.asc(), Survey.created_at.desc())
     )
-    count_query = select(func.count(Report.id))
+    count_query = select(func.count(Survey.id))
     if selected_status:
-        base_query = base_query.where(Report.status == selected_status)
-        count_query = count_query.where(Report.status == selected_status)
-    total_reports = (await db.execute(count_query)).scalar() or 0
-    total_pages = max((total_reports + REPORTS_PER_PAGE - 1) // REPORTS_PER_PAGE, 1)
+        base_query = base_query.where(Survey.status == selected_status)
+        count_query = count_query.where(Survey.status == selected_status)
+    total_surveys = (await db.execute(count_query)).scalar() or 0
+    total_pages = max((total_surveys + SURVEYS_PER_PAGE - 1) // SURVEYS_PER_PAGE, 1)
     page = min(page, total_pages)
-    reports_list = (
-        await db.execute(base_query.offset((page - 1) * REPORTS_PER_PAGE).limit(REPORTS_PER_PAGE))
-    ).scalars().all()
+    rows = [
+        {"survey": survey, "report": report}
+        for survey, report in (
+            await db.execute(base_query.offset((page - 1) * SURVEYS_PER_PAGE).limit(SURVEYS_PER_PAGE))
+        ).all()
+    ]
 
     return templates.TemplateResponse(
         request,
@@ -61,11 +65,11 @@ async def dashboard(
             "admin": session.admin,
             "csrf_token": session.csrf_token,
             "stats": stats,
-            "reports": reports_list,
-            "report_statuses": REPORT_STATUSES,
+            "rows": rows,
+            "survey_statuses": SURVEY_STATUSES,
             "selected_status": selected_status,
             "page": page,
             "total_pages": total_pages,
-            "total_reports": total_reports,
+            "total_surveys": total_surveys,
         },
     )
