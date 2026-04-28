@@ -78,7 +78,14 @@ def build_system_prompt(total_questions: int, custom_questions: list[str], force
         "## Suggested Follow-up (numbered actions for HR). "
         "Use Markdown headings (##), bullet lists (-), numbered lists (1.), and "
         "blockquotes (>) appropriately. Do not wrap the markdown in code fences. "
-        "Do not return separate risk_level, primary_theme, summary, or suggested_actions fields."
+        "Do not return separate risk_level, primary_theme, summary, or suggested_actions fields. "
+        "Ground every statement in the report in the employee context provided and the "
+        "actual conversation transcript. Do NOT invent or assume specifics that the "
+        "employee did not state — including budgets, deadlines, project timelines, "
+        "headcount, manager names or actions, team dynamics, performance history, or "
+        "any other concrete details. If the employee did not mention something, omit it "
+        "rather than guess. Notable Quotes must be verbatim excerpts from the employee's "
+        "messages, not paraphrased or fabricated."
     )
 
 
