@@ -44,15 +44,13 @@
         </tr>
       </thead>
       <tbody>
-        {% set ns = namespace(prev_emp=None) %}
         {% for row in rows %}
         {% set survey = row.survey %}
         {% set report = row.report %}
-        {% set new_group = survey.employee_id != ns.prev_emp %}
-        <tr{% if new_group and not loop.first %} class="border-top border-2"{% endif %}>
-          <td class="fw-semibold">{% if new_group %}{{ survey.employee.name }}{% endif %}</td>
-          <td>{% if new_group %}{{ survey.employee.department }}{% endif %}</td>
-          <td>{% if new_group %}{{ survey.employee.project }}{% endif %}</td>
+        <tr>
+          <td class="fw-semibold">{{ survey.employee.name }}</td>
+          <td>{{ survey.employee.department }}</td>
+          <td>{{ survey.employee.project }}</td>
           <td><span class="badge text-bg-secondary">{{ survey.status|survey_status_label }}</span></td>
           <td>{{ survey.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
           <td>
@@ -63,7 +61,6 @@
             {% endif %}
           </td>
         </tr>
-        {% set ns.prev_emp = survey.employee_id %}
         {% else %}
         <tr><td colspan="6" class="text-center text-secondary py-4">No surveys yet.</td></tr>
         {% endfor %}

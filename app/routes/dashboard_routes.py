@@ -40,9 +40,8 @@ async def dashboard(
     page = max(page, 1)
     base_query = (
         select(Survey, Report)
-        .join(Employee, Employee.id == Survey.employee_id)
         .outerjoin(Report, Report.survey_id == Survey.id)
-        .order_by(Employee.name.asc(), Survey.created_at.desc())
+        .order_by(Survey.created_at.desc())
     )
     count_query = select(func.count(Survey.id))
     if selected_status:
