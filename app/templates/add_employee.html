@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Add Employee · Sentiment Sense{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+  <div>
+    <h1 class="h2 mb-1">Add employee</h1>
+    <p class="text-secondary mb-0">For one-off additions. Bulk imports go through CSV.</p>
+  </div>
+  <a href="/admin/employees" class="btn btn-outline-secondary">Cancel</a>
+</div>
+
+<section class="row g-4">
+  <div class="col-12 col-lg-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        {% if errors %}
+        <div class="alert alert-danger border-0">
+          <ul class="mb-0">{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+        <form method="post" action="/admin/employees/new" class="vstack gap-3">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div class="row g-3">
+            <div class="col-12 col-sm-6">
+              <label class="form-label">Name</label>
+              <input class="form-control" name="name" value="{{ values.name }}" required>
+            </div>
+            <div class="col-12 col-sm-6">
+              <label class="form-label">Email</label>
+              <input class="form-control" name="email" type="email" value="{{ values.email }}" required>
+            </div>
+            <div class="col-12 col-sm-6">
+              <label class="form-label">Department</label>
+              <input class="form-control" name="department" value="{{ values.department }}" required>
+            </div>
+            <div class="col-12 col-sm-6">
+              <label class="form-label">Manager</label>
+              <input class="form-control" name="manager" value="{{ values.manager }}" required>
+            </div>
+            <div class="col-12 col-sm-6">
+              <label class="form-label">Project</label>
+              <input class="form-control" name="project" value="{{ values.project }}" required>
+            </div>
+            <div class="col-12 col-sm-6">
+              <label class="form-label">Role</label>
+              <input class="form-control" name="role" value="{{ values.role }}" required>
+            </div>
+            <div class="col-12 col-sm-6">
+              <label class="form-label">Phone</label>
+              <input class="form-control" name="phone" value="{{ values.phone }}" required>
+            </div>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-success">Add employee</button>
+            <a href="/admin/employees" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-4">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <h2 class="h6 mb-3">Notes</h2>
+        <ul class="small text-secondary mb-0">
+          <li>Email must be unique. Re-uploading the same email via CSV updates the existing record; this form rejects duplicates.</li>
+          <li>An onboarding deep link is generated automatically — copy it from the employee page and send it to them.</li>
+          <li>Phone is stored for HR records only; the bot doesn't use it.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

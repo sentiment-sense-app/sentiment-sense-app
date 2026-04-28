@@ -11,7 +11,7 @@ from app.bot_logic import (
     survey_label,
 )
 from app.config import settings
-from app.csv_import import ensure_onboarding_token, import_employees_from_csv, regenerate_onboarding_token
+from app.csv_import import REQUIRED_COLUMNS as EMPLOYEE_FIELDS, ensure_onboarding_token, import_employees_from_csv, regenerate_onboarding_token
 from app.database import get_db
 from app.models import AdminSession, Employee
 from app.web import templates
@@ -77,6 +77,74 @@ async def import_form(
         "import_employees.html",
         {"admin": session.admin, "csrf_token": session.csrf_token},
     )
+
+
+@router.get("/employees/new", response_class=HTMLResponse)
+async def new_employee_form(
+    request: Request,
+    session: AdminSession = Depends(require_admin_session),
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "add_employee.html",
+        {
+            "admin": session.admin,
+            "csrf_token": session.csrf_token,
+            "values": {column: "" for column in EMPLOYEE_FIELDS},
+            "errors": [],
+        },
+    )
+
+
+@router.post("/employees/new")
+async def create_employee(
+    request: Request,
+    csrf_token: str = Form(...),
+    name: str = Form(""),
+    email: str = Form(""),
+    department: str = Form(""),
+    manager: str = Form(""),
+    project: str = Form(""),
+    role: str = Form(""),
+    phone: str = Form(""),
+    db: AsyncSession = Depends(get_db),
+    session: AdminSession = Depends(require_admin_session),
+):
+    verify_csrf(session, csrf_token)
+    values = {
+        "name": name.strip(),
+        "email": email.strip().lower(),
+        "department": department.strip(),
+        "manager": manager.strip(),
+        "project": project.strip(),
+        "role": role.strip(),
+        "phone": phone.strip(),
+    }
+    errors = [f"{field} is required" for field in EMPLOYEE_FIELDS if not values[field]]
+    if values["email"] and not errors:
+        existing = (await db.execute(select(Employee).where(Employee.email == values["email"]))).scalar_one_or_none()
+        if existing:
+            errors.append("an employee with this email already exists")
+
+    if errors:
+        return templates.TemplateResponse(
+            request,
+            "add_employee.html",
+            {
+                "admin": session.admin,
+                "csrf_token": session.csrf_token,
+                "values": values,
+                "errors": errors,
+            },
+            status_code=400,
+        )
+
+    employee = Employee(**values)
+    db.add(employee)
+    await db.flush()
+    await ensure_onboarding_token(db, employee)
+    await db.commit()
+    return redirect_to(f"/admin/employees/{employee.id}", notice="Employee added.")
 
 
 @router.post("/employees/import")
