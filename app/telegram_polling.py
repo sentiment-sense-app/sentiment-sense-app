@@ -57,4 +57,7 @@ async def polling_loop(stop_event: asyncio.Event) -> None:
         except TelegramAPIError:
             logger.exception("Telegram polling request failed")
             await asyncio.sleep(5)
+        except Exception:
+            logger.exception("Unexpected error in Telegram polling loop")
+            await asyncio.sleep(5)
         await asyncio.sleep(0.25)
