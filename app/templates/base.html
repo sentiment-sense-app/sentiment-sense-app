@@ -31,10 +31,16 @@
     </nav>
     <main class="container-fluid px-4 py-4">
       {% if request.query_params.get("notice") %}
-      <div class="alert alert-success border-0 shadow-sm">{{ request.query_params.get("notice") }}</div>
+      <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm" role="alert" data-auto-dismiss>
+        {{ request.query_params.get("notice") }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
       {% endif %}
       {% if request.query_params.get("error") %}
-      <div class="alert alert-danger border-0 shadow-sm">{{ request.query_params.get("error") }}</div>
+      <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm" role="alert" data-auto-dismiss>
+        {{ request.query_params.get("error") }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
       {% endif %}
       {% block content %}{% endblock %}
     </main>
@@ -54,6 +60,9 @@
     <script>
       document.addEventListener("DOMContentLoaded", () => {
         document.querySelectorAll('[data-bs-toggle="popover"]').forEach((el) => new bootstrap.Popover(el));
+        document.querySelectorAll('.alert[data-auto-dismiss]').forEach((el) => {
+          window.setTimeout(() => bootstrap.Alert.getOrCreateInstance(el).close(), 10000);
+        });
       });
     </script>
   </body>
