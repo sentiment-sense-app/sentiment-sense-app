@@ -31,7 +31,13 @@ def _get_client() -> AsyncOpenAI:
     return _client
 
 
-def build_system_prompt(total_questions: int, custom_questions: list[str], force_finalize: bool = False) -> str:
+def build_system_prompt(
+    total_questions: int,
+    custom_questions: list[str],
+    turn_cap: int,
+    force_finalize: bool = False,
+) -> str:
+    extra = max(0, turn_cap - total_questions)
     custom_block = ""
     if custom_questions:
         rendered = "\n".join(f"- {q}" for q in custom_questions)
@@ -44,7 +50,7 @@ def build_system_prompt(total_questions: int, custom_questions: list[str], force
     finalize_block = ""
     if force_finalize:
         finalize_block = (
-            "\nThe question budget is exhausted. You MUST set conversation_done=true on "
+            "\nThe turn budget is exhausted. You MUST set conversation_done=true on "
             "this turn and emit the final report_markdown now."
         )
     return (
@@ -53,15 +59,22 @@ def build_system_prompt(total_questions: int, custom_questions: list[str], force
         "questions. Do not sound accusatory. Do not make promises HR cannot keep. "
         "Do not diagnose medical or mental health conditions. Avoid collecting "
         "unnecessary sensitive personal details. "
-        f"You have a budget of {total_questions} question(s) total, INCLUDING the "
-        "opening question already sent. While questions remain in the budget, set "
-        "conversation_done=false and put your next question (custom or follow-up) in "
-        "reply_to_employee. After the employee has answered the final question in the "
-        "budget, set conversation_done=true. On that closing turn, reply_to_employee "
-        "MUST be a brief, warm acknowledgement (e.g., \"Thanks for sharing — your input "
-        "has been recorded confidentially.\") and MUST NOT contain a new question or "
-        "any sentence ending in '?'. The system will send the survey-complete message "
-        "right after your acknowledgement."
+        f"This survey asks exactly {total_questions} substantive question(s) in total. "
+        f"You have a budget of {turn_cap} bot turns to deliver them — that's "
+        f"{total_questions} for the questions plus {extra} buffer turn(s) for natural "
+        "lead-ins, smooth transitions between topics, and the final acknowledgement. "
+        "Spend the buffer where it helps the conversation feel human, not only at the "
+        "end. Make this feel like one coherent conversation, not a checklist: briefly "
+        "acknowledge what the employee just said before moving to a new topic, and "
+        "reference earlier answers when it makes the next question land more "
+        "naturally. Do not jump from one unrelated question to the next. "
+        f"While substantive questions remain unasked, set conversation_done=false. "
+        f"Once all {total_questions} substantive questions have been asked AND the "
+        "employee has answered the last one, set conversation_done=true. On that "
+        "closing turn, reply_to_employee MUST be a brief, warm acknowledgement (e.g., "
+        "\"Thanks for sharing — your input has been recorded confidentially.\") and "
+        "MUST NOT contain a new question or any sentence ending in '?'. The system "
+        "will send the survey-complete message right after your acknowledgement."
         f"{custom_block}"
         f"{finalize_block} "
         "Your goal is to capture how the employee feels about work, the main "
@@ -149,17 +162,21 @@ def _extract_usage(response: Any) -> dict[str, Any]:
 async def generate_bot_turn(
     employee: Employee,
     messages: list[Message],
-    total_questions: int = 3,
+    total_questions: int,
+    turn_cap: int,
     custom_questions: list[str] | None = None,
     force_finalize: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     client = _get_client()
+    extra = max(0, turn_cap - total_questions)
     logger.info(
-        "LLM call start: model=%s turn=%d employee=%s budget=%d customs=%d finalize=%s",
+        "LLM call start: model=%s turn=%d employee=%s budget=%d cap=%d extra=%d customs=%d finalize=%s",
         settings.openrouter_model,
         len(messages),
         employee.name,
         total_questions,
+        turn_cap,
+        extra,
         len(custom_questions or []),
         force_finalize,
     )
@@ -169,7 +186,7 @@ async def generate_bot_turn(
             model=settings.openrouter_model,
             response_format={"type": "json_object"},
             messages=[
-                {"role": "system", "content": build_system_prompt(total_questions, custom_questions or [], force_finalize)},
+                {"role": "system", "content": build_system_prompt(total_questions, custom_questions or [], turn_cap, force_finalize)},
                 {"role": "user", "content": build_conversation_context(employee, messages)},
             ],
         )

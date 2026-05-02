@@ -340,6 +340,7 @@ async def handle_employee_message(
             employee,
             list(messages),
             total_questions=survey.total_questions,
+            turn_cap=survey.turn_cap,
             custom_questions=customs,
             force_finalize=force_finalize,
         )
