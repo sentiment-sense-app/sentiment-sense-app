@@ -57,7 +57,7 @@
         <h2 class="h4 mb-3">Sending a survey</h2>
         <p>From an employee detail page, click <strong>Send survey</strong>. You configure:</p>
         <ul>
-          <li><strong>Total questions</strong> — how many questions the bot may ask (1–20). Includes the opening question.</li>
+          <li><strong>Total questions</strong> — how many questions the bot may ask (1–20). The opener is question 1 of N.</li>
           <li><strong>% from custom questions</strong> — share of total questions taken from your custom list. The rest are AI-generated. 0% means fully AI-driven.</li>
           <li><strong>Custom questions</strong> — type one at a time, or upload a single-column CSV (header <code>question</code> is auto-skipped). You can delete individual entries or clear all before sending.</li>
         </ul>
@@ -89,7 +89,7 @@
         <h2 class="h4 mb-3">Bot behavior</h2>
         <p>The bot conducts the survey one turn at a time, deciding whether to ask the next question or wrap up based on the question budget you set.</p>
         <ul>
-          <li>The first question is always sent at survey start. If you provided custom questions, the first one is used verbatim as the opener (and counts toward the budget). Otherwise a templated greeting is sent that includes the employee's name.</li>
+          <li>The first question is always sent at survey start. If you provided custom questions, the first one is sent as the opener (preceded by a brief "Hi {name}, quick survey." lead-in) and counts toward the budget. Otherwise a templated greeting is sent that includes the employee's name.</li>
           <li>Subsequent questions come from the LLM, which is told the budget and the remaining custom-question list.</li>
           <li>After the employee answers the final question, the LLM produces a brief warm acknowledgement; the canned survey-complete message is appended right after in the same turn.</li>
           <li>The bot has an extra-turn buffer (2 turns for surveys up to 10 questions, 20% of total above that) so it can ask a follow-up if needed and always close gracefully.</li>
@@ -105,7 +105,7 @@
         <p>Use custom questions when HR needs to hear about specific topics in this survey wave (e.g. compliance, a recent reorg, project launch).</p>
         <ul class="mb-0">
           <li>Selection happens once at survey-creation time: the % you set is multiplied by total questions to pick how many customs to draw, and that many are sampled at random from your list. Only the picked subset is given to the bot — the rest of the list is ignored for this survey.</li>
-          <li>If you supply customs, the first one is used as the opener (and counts toward the budget). The remaining customs are woven in by the LLM across the conversation.</li>
+          <li>If you supply customs, the first one is sent as the opener (preceded by a brief "Hi {name}, quick survey." lead-in) and counts toward the budget. The remaining customs are woven in by the LLM across the conversation.</li>
           <li>The bot is instructed to ask custom questions verbatim or with minor rewording, and not to duplicate their topics in its own follow-ups.</li>
           <li>0% means fully AI-driven; 100% means all questions come from your list (capped by total).</li>
         </ul>
