@@ -2,7 +2,7 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_admin_session, verify_csrf
@@ -13,7 +13,7 @@ from app.bot_logic import (
 from app.config import settings
 from app.csv_import import REQUIRED_COLUMNS as EMPLOYEE_FIELDS, ensure_onboarding_token, import_employees_from_csv, regenerate_onboarding_token
 from app.database import get_db
-from app.models import AdminSession, Employee
+from app.models import AdminSession, Employee, Message, OnboardingToken, Report, Survey
 from app.web import templates
 
 
@@ -206,5 +206,26 @@ async def regenerate_link(
         return redirect_to("/admin/employees", error="Employee not found.")
     await regenerate_onboarding_token(db, employee)
     return redirect_to(f"/admin/employees/{employee.id}", notice="Deep link regenerated.")
+
+
+@router.post("/employees/{employee_id}/delete")
+async def delete_employee(
+    employee_id: int,
+    csrf_token: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+    session: AdminSession = Depends(require_admin_session),
+) -> RedirectResponse:
+    verify_csrf(session, csrf_token)
+    employee = await db.get(Employee, employee_id)
+    if not employee:
+        return redirect_to("/admin/employees", error="Employee not found.")
+    name = employee.name
+    await db.execute(delete(Report).where(Report.employee_id == employee_id))
+    await db.execute(delete(Message).where(Message.employee_id == employee_id))
+    await db.execute(delete(Survey).where(Survey.employee_id == employee_id))
+    await db.execute(delete(OnboardingToken).where(OnboardingToken.employee_id == employee_id))
+    await db.delete(employee)
+    await db.commit()
+    return redirect_to("/admin/employees", notice=f"Deleted {name} and all related survey data.")
 
 

@@ -38,6 +38,10 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button type="submit" class="btn btn-outline-secondary">Regenerate deep link</button>
       </form>
+      <form method="post" action="/admin/employees/{{ employee.id }}/delete" class="d-inline" onsubmit="return confirm('Delete {{ employee.name }} and all their surveys, messages, and reports? This cannot be undone.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn-outline-danger">Delete employee</button>
+      </form>
     </div>
   </div>
 </section>

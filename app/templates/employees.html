@@ -49,6 +49,10 @@
             <a class="btn btn-sm btn-outline-secondary" href="/admin/employees/{{ employee.id }}">View</a>
             <button type="button" class="btn btn-sm btn-outline-secondary" data-copy="{{ row.deep_link }}" {% if not row.deep_link %}disabled{% endif %}>Copy link</button>
             <a class="btn btn-sm btn-success" href="/admin/employees/{{ employee.id }}/start-survey">Send survey</a>
+            <form method="post" action="/admin/employees/{{ employee.id }}/delete" class="d-inline" onsubmit="return confirm('Delete {{ employee.name }} and all their surveys, messages, and reports? This cannot be undone.');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+            </form>
             </div>
           </td>
         </tr>
