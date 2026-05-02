@@ -14,12 +14,17 @@
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
+      {% set path = request.url.path %}
+      {% set is_import = path.startswith("/admin/employees/import") %}
+      {% set is_employees = path.startswith("/admin/employees") and not is_import %}
+      {% set is_docs = path.startswith("/admin/docs") %}
+      {% set is_dashboard = path == "/admin" or path == "/admin/" or path.startswith("/admin/surveys") %}
       <div class="collapse navbar-collapse" id="mainNav">
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-          <li class="nav-item"><a class="nav-link" href="/admin">Dashboard</a></li>
-          <li class="nav-item"><a class="nav-link" href="/admin/employees">Employees</a></li>
-          <li class="nav-item"><a class="nav-link" href="/admin/employees/import">Import</a></li>
-          <li class="nav-item"><a class="nav-link" href="/admin/docs">Docs</a></li>
+          <li class="nav-item"><a class="nav-link {% if is_dashboard %}active{% endif %}" {% if is_dashboard %}aria-current="page"{% endif %} href="/admin">Dashboard</a></li>
+          <li class="nav-item"><a class="nav-link {% if is_employees %}active{% endif %}" {% if is_employees %}aria-current="page"{% endif %} href="/admin/employees">Employees</a></li>
+          <li class="nav-item"><a class="nav-link {% if is_import %}active{% endif %}" {% if is_import %}aria-current="page"{% endif %} href="/admin/employees/import">Import</a></li>
+          <li class="nav-item"><a class="nav-link {% if is_docs %}active{% endif %}" {% if is_docs %}aria-current="page"{% endif %} href="/admin/docs">Docs</a></li>
         </ul>
         <form method="post" action="/logout" class="d-flex">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
