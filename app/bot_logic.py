@@ -17,9 +17,10 @@ from app.telegram_client import TelegramAPIError, TelegramClient
 logger = logging.getLogger(__name__)
 
 INTRO_MESSAGE = (
-    "Hi, I'm the company pulse assistant. I'll ask occasional questions about your work "
-    "experience. Your responses may be summarized for HR so they can identify concerns "
-    "and follow up appropriately. Please avoid sharing sensitive personal details unless necessary."
+    "👋 Hi! I'm Sentiment Sense, Accion's confidential pulse assistant. I'll ask a few "
+    "short questions about how things are going at work. Your responses go to HR in a "
+    "summarized form so they can support you and the team. Please skip anything you'd "
+    "rather not share, and avoid sensitive personal details."
 )
 
 NO_ACTIVE_MESSAGE = (
