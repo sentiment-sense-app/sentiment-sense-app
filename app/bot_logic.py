@@ -400,6 +400,16 @@ async def process_telegram_update(db: AsyncSession, telegram: TelegramClient, up
     if update_id is None or not text or not chat_id:
         return
 
+    if isinstance(update_id, int):
+        seen = (
+            await db.execute(
+                select(Message.id).where(Message.telegram_update_id == update_id).limit(1)
+            )
+        ).scalar_one_or_none()
+        if seen is not None:
+            logger.info("Skipping already-processed Telegram update %s", update_id)
+            return
+
     if text.startswith("/start"):
         parts = text.split(maxsplit=1)
         await handle_start_command(db, telegram, chat, user, parts[1] if len(parts) > 1 else None)

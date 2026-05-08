@@ -48,12 +48,23 @@ async def polling_loop(stop_event: asyncio.Event) -> None:
                 updates = await telegram.get_updates(offset=offset, timeout=25)
                 for update in updates:
                     update_id = update.get("update_id")
-                    if isinstance(update_id, int):
-                        await set_last_update_id(db, update_id)
+                    advance_offset = True
                     try:
                         await process_telegram_update(db, telegram, update)
+                    except TelegramAPIError:
+                        logger.exception(
+                            "Telegram API error processing update %s; will retry", update_id
+                        )
+                        advance_offset = False
                     except Exception:
-                        logger.exception("Failed to process Telegram update %s", update_id)
+                        logger.exception(
+                            "Unexpected error processing update %s; advancing offset to avoid blocking the queue",
+                            update_id,
+                        )
+                    if not advance_offset:
+                        break
+                    if isinstance(update_id, int):
+                        await set_last_update_id(db, update_id)
         except TelegramAPIError:
             logger.exception("Telegram polling request failed")
             await asyncio.sleep(5)
