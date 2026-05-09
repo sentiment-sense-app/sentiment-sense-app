@@ -4,7 +4,7 @@ import io
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Report
+from app.models import Report, sentiment_band
 
 
 REPORT_STATUSES = ["open", "reviewed", "resolved", "dismissed"]
@@ -32,6 +32,8 @@ async def export_reports_csv(db: AsyncSession, status: str | None = None) -> str
             "project",
             "role",
             "phone",
+            "sentiment_score",
+            "sentiment_band",
             "report",
             "status",
             "hr_notes",
@@ -51,6 +53,8 @@ async def export_reports_csv(db: AsyncSession, status: str | None = None) -> str
                 employee.project,
                 employee.role,
                 employee.phone,
+                "" if report.sentiment_score is None else report.sentiment_score,
+                sentiment_band(report.sentiment_score) or "",
                 report.report_markdown,
                 report.status,
                 report.hr_notes,

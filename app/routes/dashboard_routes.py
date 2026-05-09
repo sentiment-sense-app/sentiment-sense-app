@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_admin_session
@@ -13,6 +13,7 @@ from app.web import templates
 router = APIRouter()
 
 SURVEYS_PER_PAGE = 20
+SORT_OPTIONS = {"recent": "Most recent", "priority": "Priority (Red first)"}
 
 
 @router.get("/")
@@ -37,6 +38,7 @@ async def dashboard(
     request: Request,
     page: int = 1,
     status: str | None = None,
+    sort: str | None = None,
     db: AsyncSession = Depends(get_db),
     session: AdminSession = Depends(require_admin_session),
 ) -> HTMLResponse:
@@ -49,12 +51,21 @@ async def dashboard(
     }
 
     selected_status = status if status in SURVEY_STATUSES else None
+    selected_sort = sort if sort in SORT_OPTIONS else "recent"
     page = max(page, 1)
     base_query = (
         select(Survey, Report)
         .outerjoin(Report, Report.survey_id == Survey.id)
-        .order_by(Survey.created_at.desc())
     )
+    if selected_sort == "priority":
+        # Lowest score first (red→green); NULLs (no report yet) last; tie-break by recency.
+        base_query = base_query.order_by(
+            case((Report.sentiment_score.is_(None), 1), else_=0),
+            Report.sentiment_score.asc(),
+            Survey.created_at.desc(),
+        )
+    else:
+        base_query = base_query.order_by(Survey.created_at.desc())
     count_query = select(func.count(Survey.id))
     if selected_status:
         base_query = base_query.where(Survey.status == selected_status)
@@ -79,6 +90,8 @@ async def dashboard(
             "rows": rows,
             "survey_statuses": SURVEY_STATUSES,
             "selected_status": selected_status,
+            "sort_options": SORT_OPTIONS,
+            "selected_sort": selected_sort,
             "page": page,
             "total_pages": total_pages,
             "total_surveys": total_surveys,

@@ -4,6 +4,7 @@ from markupsafe import Markup, escape
 
 from app.bot_logic import survey_status_label
 from app.config import settings
+from app.models import sentiment_band
 from app.reports import report_status_label
 
 
@@ -23,4 +24,5 @@ templates.env.filters["nl2br"] = nl2br
 templates.env.filters["markdown"] = render_markdown
 templates.env.filters["report_status_label"] = report_status_label
 templates.env.filters["survey_status_label"] = survey_status_label
+templates.env.filters["sentiment_band"] = sentiment_band
 templates.env.globals["settings"] = settings

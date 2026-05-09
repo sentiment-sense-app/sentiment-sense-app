@@ -2,7 +2,16 @@
 {% block title %}Report #{{ report.id }} · Sentiment Sense{% endblock %}
 {% block content %}
 <div class="mb-4">
-  <h1 class="h2 mb-1">Report #{{ report.id }}</h1>
+  <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+    <h1 class="h2 mb-0">Report #{{ report.id }}</h1>
+    {% if report.sentiment_score is not none %}
+    {% set band = report.sentiment_score|sentiment_band %}
+    {% set band_class = {'red': 'text-bg-danger', 'yellow': 'text-bg-warning', 'green': 'text-bg-success'}.get(band, 'text-bg-secondary') %}
+    <span class="badge {{ band_class }} fs-6">{{ band|capitalize }} · {{ report.sentiment_score }}/100</span>
+    {% else %}
+    <span class="badge text-bg-secondary fs-6">Sentiment unknown</span>
+    {% endif %}
+  </div>
   <p class="text-secondary mb-1">{{ report.employee.name }} · {{ report.employee.department }} · {{ report.employee.project }}</p>
   {% if survey and (survey.prompt_tokens or survey.completion_tokens or survey.cost_usd) %}
   <p class="text-secondary small mb-0">AI usage: input {{ survey.prompt_tokens }} · output {{ survey.completion_tokens }} · cost ${{ '%.6f'|format(survey.cost_usd) }}</p>

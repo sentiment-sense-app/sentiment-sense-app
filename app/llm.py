@@ -80,10 +80,11 @@ def build_system_prompt(
         "Your goal is to capture how the employee feels about work, the main "
         "workplace concern, useful context for HR, and appropriate follow-up. "
         "Return only valid JSON with exactly these keys: reply_to_employee, "
-        "conversation_done, report_markdown. report_markdown must be null until "
-        "conversation_done is true. When conversation_done is true, report_markdown "
-        "must contain one complete HR-facing report formatted as well-structured "
-        "GitHub-Flavored Markdown using these sections in order: "
+        "conversation_done, report_markdown, sentiment_score. report_markdown and "
+        "sentiment_score must be null until conversation_done is true. When "
+        "conversation_done is true, report_markdown must contain one complete "
+        "HR-facing report formatted as well-structured GitHub-Flavored Markdown "
+        "using these sections in order: "
         "## Summary (2-3 sentence overview), "
         "## Sentiment (one of Positive / Neutral / Concerned / At-risk, with one-line justification), "
         "## Key Themes (bulleted list), "
@@ -92,6 +93,11 @@ def build_system_prompt(
         "Use Markdown headings (##), bullet lists (-), numbered lists (1.), and "
         "blockquotes (>) appropriately. Do not wrap the markdown in code fences. "
         "Do not return separate risk_level, primary_theme, summary, or suggested_actions fields. "
+        "When conversation_done is true, sentiment_score must be an integer from 0 "
+        "to 100 reflecting the employee's overall workplace sentiment in this "
+        "conversation: 0 means severe distress or strong dissatisfaction, 50 means "
+        "neutral or mixed, 100 means clearly positive and engaged. Lower scores "
+        "should map to greater HR urgency. "
         "Ground every statement in the report in the employee context provided and the "
         "actual conversation transcript. Do NOT invent or assume specifics that the "
         "employee did not state — including budgets, deadlines, project timelines, "
@@ -144,7 +150,26 @@ def parse_llm_json(content: str) -> dict[str, Any]:
         raise LLMError("Completed LLM response is missing report_markdown")
     if isinstance(report, str):
         parsed["report_markdown"] = strip_markdown_fence(report)
+    if parsed["conversation_done"]:
+        parsed["sentiment_score"] = _coerce_score(parsed.get("sentiment_score"))
+    else:
+        parsed["sentiment_score"] = None
     return parsed
+
+
+def _coerce_score(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        score = int(round(value))
+    elif isinstance(value, str):
+        try:
+            score = int(round(float(value.strip())))
+        except (ValueError, AttributeError):
+            return None
+    else:
+        return None
+    return max(0, min(100, score))
 
 
 def _extract_usage(response: Any) -> dict[str, Any]:

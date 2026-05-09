@@ -28,7 +28,13 @@
         <option value="{{ status }}" {% if selected_status == status %}selected{% endif %}>{{ status|survey_status_label }}</option>
         {% endfor %}
       </select>
-      <noscript><button type="submit" class="btn btn-sm btn-outline-secondary">Filter</button></noscript>
+      <label class="col-form-label col-form-label-sm text-secondary mb-0 ms-2">Sort</label>
+      <select class="form-select form-select-sm" name="sort" onchange="this.form.submit()">
+        {% for value, label in sort_options.items() %}
+        <option value="{{ value }}" {% if selected_sort == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <noscript><button type="submit" class="btn btn-sm btn-outline-secondary">Apply</button></noscript>
     </form>
   </div>
   <div class="table-responsive">
@@ -39,6 +45,7 @@
           <th>Department</th>
           <th>Project</th>
           <th>Status</th>
+          <th>Sentiment</th>
           <th>Created</th>
           <th>Usage</th>
           <th>Report</th>
@@ -53,6 +60,15 @@
           <td>{{ survey.employee.department }}</td>
           <td>{{ survey.employee.project }}</td>
           <td><span class="badge text-bg-secondary">{{ survey.status|survey_status_label }}</span></td>
+          <td>
+            {% if report and report.sentiment_score is not none %}
+            {% set band = report.sentiment_score|sentiment_band %}
+            {% set band_class = {'red': 'text-bg-danger', 'yellow': 'text-bg-warning', 'green': 'text-bg-success'}.get(band, 'text-bg-secondary') %}
+            <span class="badge {{ band_class }}" title="Score: {{ report.sentiment_score }}/100">{{ band|capitalize }} · {{ report.sentiment_score }}</span>
+            {% else %}
+            <span class="text-secondary">—</span>
+            {% endif %}
+          </td>
           <td>{{ survey.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
           <td>
             {% if survey.prompt_tokens or survey.completion_tokens or survey.cost_usd %}
@@ -77,7 +93,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="7" class="text-center text-secondary py-4">No surveys yet.</td></tr>
+        <tr><td colspan="8" class="text-center text-secondary py-4">No surveys yet.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -88,10 +104,10 @@
     <nav>
       <ul class="pagination pagination-sm mb-0">
         <li class="page-item {% if page <= 1 %}disabled{% endif %}">
-          <a class="page-link" href="?page={{ page - 1 }}{% if selected_status %}&status={{ selected_status }}{% endif %}">Prev</a>
+          <a class="page-link" href="?page={{ page - 1 }}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_sort and selected_sort != 'recent' %}&sort={{ selected_sort }}{% endif %}">Prev</a>
         </li>
         <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
-          <a class="page-link" href="?page={{ page + 1 }}{% if selected_status %}&status={{ selected_status }}{% endif %}">Next</a>
+          <a class="page-link" href="?page={{ page + 1 }}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_sort and selected_sort != 'recent' %}&sort={{ selected_sort }}{% endif %}">Next</a>
         </li>
       </ul>
     </nav>

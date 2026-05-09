@@ -12,6 +12,16 @@ def now_utc() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+def sentiment_band(score: int | None) -> str | None:
+    if score is None:
+        return None
+    if score < 40:
+        return "red"
+    if score < 70:
+        return "yellow"
+    return "green"
+
+
 class Admin(Base):
     __tablename__ = "admins"
 
@@ -117,6 +127,7 @@ class Report(Base):
     survey_id: Mapped[int] = mapped_column(ForeignKey("surveys.id"), nullable=False)
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True, nullable=False)
     report_markdown: Mapped[str] = mapped_column(Text, nullable=False)
+    sentiment_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     hr_notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
     status: Mapped[str] = mapped_column(String(50), default="open", index=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, nullable=False)

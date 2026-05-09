@@ -299,6 +299,7 @@ async def _finalize_survey(
     employee: Employee,
     survey: Survey,
     report_markdown: str,
+    sentiment_score: int | None = None,
 ) -> None:
     survey.status = "completed"
     survey.completed_at = now_utc()
@@ -308,6 +309,7 @@ async def _finalize_survey(
             survey_id=survey.id,
             employee_id=employee.id,
             report_markdown=report_markdown.strip(),
+            sentiment_score=sentiment_score,
             status="open",
         )
     )
@@ -373,6 +375,9 @@ async def handle_employee_message(
     completed = decision["conversation_done"] or force_finalize
     if completed:
         report_md = decision.get("report_markdown") or ""
+        score = decision.get("sentiment_score")
+        if not isinstance(score, int):
+            score = None
         if not report_md.strip():
             report_md = (
                 "## Summary\nReport text was missing from the model response.\n\n"
@@ -381,8 +386,13 @@ async def handle_employee_message(
                 "## Notable Quotes\n- See transcript\n\n"
                 "## Suggested Follow-up\n1. Review the conversation transcript manually."
             )
-        await _finalize_survey(db, employee, survey, report_md)
-        logger.info("Survey complete for %s (survey=%d), report saved", employee.name, survey.id)
+        await _finalize_survey(db, employee, survey, report_md, sentiment_score=score)
+        logger.info(
+            "Survey complete for %s (survey=%d), report saved (score=%s)",
+            employee.name,
+            survey.id,
+            score,
+        )
     await db.commit()
     await telegram.send_message(employee.telegram_chat_id, reply)
     if completed:
