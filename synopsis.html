@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sentiment Sense - Synopsis</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+    color: #1f2933;
+    line-height: 1.4;
+    font-size: 10.4pt;
+    background: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  /* Compact header strip */
+  .strip {
+    background: linear-gradient(135deg, #1f6b32 0%, #2f9e44 100%);
+    color: #fff;
+    padding: 5mm 18mm;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14mm;
+    border-bottom: 2px solid #1f6b32;
+  }
+  .strip .left h1 {
+    font-size: 17pt;
+    margin: 0;
+    letter-spacing: -0.3px;
+    font-weight: 700;
+    line-height: 1.05;
+  }
+  .strip .left .tag {
+    margin: 2px 0 0;
+    font-size: 9.4pt;
+    opacity: 0.95;
+  }
+  .strip .right {
+    text-align: right;
+    font-size: 8.6pt;
+    line-height: 1.5;
+    opacity: 0.95;
+  }
+  .strip .right a { color: #fff; text-decoration: underline; text-underline-offset: 2px; }
+  .strip .right .lbl {
+    color: #c8f0d0;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    font-size: 7.8pt;
+    margin-right: 6px;
+  }
+
+  .body { padding: 6mm 18mm 4mm; }
+
+  h2 {
+    font-size: 8.4pt;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    color: #2f9e44;
+    margin: 0 0 6px;
+    font-weight: 700;
+  }
+  p { margin: 0 0 7px; }
+  ul { margin: 3px 0 0; padding-left: 16px; }
+  li { margin-bottom: 3px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; margin-bottom: 3mm; }
+  .grid-3 { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 10mm; margin-bottom: 3mm; }
+
+  /* Pipeline */
+  .pipeline-wrap { margin-bottom: 3mm; }
+  .pipeline {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .pipeline .step {
+    background: #f7faf8;
+    border: 1px solid #d9e8de;
+    border-radius: 6px;
+    padding: 8px 6px 7px;
+    text-align: center;
+    font-size: 8.4pt;
+    color: #1f3024;
+    line-height: 1.3;
+  }
+  .pipeline .step .num {
+    display: block;
+    width: 20px; height: 20px; line-height: 20px;
+    border-radius: 50%;
+    background: #2f9e44; color: #fff;
+    font-size: 9pt; font-weight: 700;
+    margin: 0 auto 4px;
+  }
+  .pipeline .step strong { display: block; color: #1f6b32; font-size: 8.8pt; margin-bottom: 2px; }
+
+  /* Lists */
+  .highlights li { margin-bottom: 4px; }
+  .highlights strong { color: #1f6b32; }
+
+  /* Tech stack chips */
+  .stack-groups { display: flex; flex-direction: column; gap: 6px; }
+  .stack-group { display: flex; align-items: baseline; gap: 8px; }
+  .stack-group .label {
+    color: #5b6571;
+    font-weight: 700;
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 62px;
+    flex-shrink: 0;
+  }
+  .stack-group .chips { display: flex; flex-wrap: wrap; gap: 3px 4px; }
+  .chip {
+    display: inline-block;
+    background: #f1f8f3;
+    border: 1px solid #c8e6d0;
+    color: #1f6b32;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 8.6pt;
+    font-weight: 500;
+    line-height: 1.45;
+    white-space: nowrap;
+  }
+
+  /* Lifecycle pills */
+  .lifecycle { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 9px;
+    border-radius: 11px;
+    font-size: 8.6pt;
+    font-weight: 600;
+    background: #f4f5f7;
+    color: #1f2933;
+    border: 1px solid #e3e6eb;
+  }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: #9aa4b1; }
+  .pill.pending .dot { background: #f59f00; }
+  .pill.active .dot { background: #2f9e44; }
+  .pill.completed .dot { background: #1f6b32; }
+  .pill.cancelled .dot { background: #868e96; }
+  .pill.failed .dot { background: #c92a2a; }
+
+  /* Two-col compact bullets */
+  .compact-list { margin: 0; padding-left: 16px; font-size: 9.8pt; }
+  .compact-list li { margin-bottom: 3px; }
+  .compact-list strong { color: #1f6b32; }
+
+  /* Closing */
+  .closing {
+    margin-top: 4mm;
+    background: #1f6b32;
+    color: #fff;
+    padding: 8px 13px;
+    border-radius: 6px;
+    font-size: 9.6pt;
+    line-height: 1.4;
+  }
+  .closing strong { color: #c8f0d0; }
+
+  /* Boxed mini-section */
+  .box {
+    background: #f7faf8;
+    border: 1px solid #d9e8de;
+    border-radius: 6px;
+    padding: 9px 12px;
+  }
+  .box h2 { margin-bottom: 5px; }
+  .box p, .box ul { font-size: 9.6pt; }
+
+  code { background: #eef2f3; padding: 1px 5px; border-radius: 3px; font-size: 9.4pt; }
+  a { color: #2f9e44; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="strip">
+  <div class="left">
+    <h1>Sentiment Sense</h1>
+    <p class="tag">AI-led employee pulse surveys over Telegram, with HR-ready reports.</p>
+  </div>
+  <div class="right">
+    <div><span class="lbl">Live</span><a href="https://sentiment-sense.air-app.xyz">sentiment-sense.air-app.xyz</a></div>
+    <div><span class="lbl">Repo</span><a href="https://github.com/sentiment-sense-app/sentiment-sense-app">github.com/sentiment-sense-app/sentiment-sense-app</a></div>
+  </div>
+</div>
+
+<div class="body">
+
+  <div class="grid-2">
+    <section>
+      <h2>Problem</h2>
+      <p>Employee pulse surveys are either too rigid (form fatigue, low signal) or too costly to run conversationally at scale. HR teams want honest, contextual feedback without scheduling 1:1s with every employee or relying on raw star ratings, and want to act on what they hear without wading through transcripts.</p>
+    </section>
+    <section>
+      <h2>Solution</h2>
+      <p>Sentiment Sense runs short, AI-led check-ins with employees on a channel they already use: Telegram. Each conversation is summarised into a structured report (sentiment, themes, quotes, suggested follow-up). HR can mix custom questions with AI-generated ones per wave, track per-survey AI cost, and review reports on a single dashboard.</p>
+    </section>
+  </div>
+
+  <div class="pipeline-wrap">
+    <h2>How it works</h2>
+    <div class="pipeline">
+      <div class="step"><span class="num">1</span><strong>Import</strong>employees via CSV or form</div>
+      <div class="step"><span class="num">2</span><strong>Onboard</strong>share Telegram deep link</div>
+      <div class="step"><span class="num">3</span><strong>Open chat</strong>bot greets the employee</div>
+      <div class="step"><span class="num">4</span><strong>Converse</strong>LLM-driven Q&amp;A turns</div>
+      <div class="step"><span class="num">5</span><strong>Report</strong>summary, themes, quotes</div>
+      <div class="step"><span class="num">6</span><strong>Review</strong>HR acts on dashboard</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <section>
+      <h2>What HR gets</h2>
+      <ul class="highlights compact-list">
+        <li><strong>Configurable surveys.</strong> For each survey, HR sets how many questions the bot asks (e.g. 10 or 20) and the split between custom questions HR provides and ones the AI generates (e.g. 50% custom).</li>
+        <li><strong>Triage by sentiment.</strong> Each report gets a 0-100 sentiment score and Red / Yellow / Green band so HR can sort reds first. Open / Reviewed / Resolved / Dismissed states with HR notes; full transcript visible alongside.</li>
+        <li><strong>Grounded reports.</strong> LLM constrained to the actual transcript and stored employee profile, no fabricated specifics, no medical claims.</li>
+        <li><strong>Cost transparency.</strong> Per-survey prompt/completion tokens and USD cost from OpenRouter shown inline on the dashboard.</li>
+        <li><strong>Resilient delivery.</strong> Offset-confirmed Telegram polling with update-id deduping, so transient API errors never drop messages.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Tech stack</h2>
+      <div class="stack-groups">
+        <div class="stack-group">
+          <span class="label">Backend</span>
+          <div class="chips"><span class="chip">FastAPI</span><span class="chip">Python 3.12</span><span class="chip">async</span></div>
+        </div>
+        <div class="stack-group">
+          <span class="label">Data</span>
+          <div class="chips"><span class="chip">SQLite</span><span class="chip">SQLAlchemy 2</span><span class="chip">aiosqlite</span></div>
+        </div>
+        <div class="stack-group">
+          <span class="label">AI</span>
+          <div class="chips"><span class="chip">Claude Sonnet</span><span class="chip">OpenRouter</span><span class="chip">OpenAI SDK</span></div>
+        </div>
+        <div class="stack-group">
+          <span class="label">Messaging</span>
+          <div class="chips"><span class="chip">Telegram Bot API</span><span class="chip">httpx polling</span></div>
+        </div>
+        <div class="stack-group">
+          <span class="label">Frontend</span>
+          <div class="chips"><span class="chip">Jinja2</span><span class="chip">Bootstrap 5</span></div>
+        </div>
+        <div class="stack-group">
+          <span class="label">Platform</span>
+          <div class="chips"><span class="chip">Docker Compose</span><span class="chip">Caddy auto-HTTPS</span><span class="chip">argon2 auth</span></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="grid-2">
+    <section>
+      <h2>Survey lifecycle</h2>
+      <div class="lifecycle">
+        <span class="pill pending"><span class="dot"></span>Pending</span>
+        <span class="pill active"><span class="dot"></span>Active</span>
+        <span class="pill completed"><span class="dot"></span>Completed</span>
+        <span class="pill cancelled"><span class="dot"></span>Cancelled</span>
+        <span class="pill failed"><span class="dot"></span>Failed</span>
+      </div>
+      <p style="margin-top:6px; font-size:9.4pt; color:#5b6571;">Pending until the employee opens their onboarding link; Active during the conversation; Completed when the bot wraps up cleanly. Failed captures Telegram or LLM errors at the finalize turn, with a placeholder report still saved so the transcript stays reviewable.</p>
+    </section>
+
+    <section>
+      <h2>Bot behavior &amp; safety</h2>
+      <ul class="compact-list">
+        <li>One turn at a time; opener is templated or the first custom question, follow-ups are LLM-driven within a question budget plus buffer.</li>
+        <li>Instructed to ask custom questions verbatim or with minor rewording, and not duplicate their topics in its own follow-ups.</li>
+        <li>Avoids medical/mental-health diagnosis and unnecessary sensitive personal questions; never promises HR action on the bot side.</li>
+      </ul>
+    </section>
+  </div>
+
+  <div class="closing">
+    <strong>Why it matters.</strong> HR gets richer, more contextual signal than a static survey, employees get a low-friction chat instead of yet another survey link, and the whole loop runs from CSV import to a reviewable, HR-ready report.
+  </div>
+
+</div>
+
+</div>
+</body>
+</html>
