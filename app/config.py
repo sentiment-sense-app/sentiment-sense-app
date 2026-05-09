@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     openrouter_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
-    openrouter_model: str = "deepseek/deepseek-v4-pro"
+    openrouter_model: str = "anthropic/claude-sonnet-4.6"
 
     session_cookie_name: str = "hr_pulse_session"
     session_ttl_hours: int = 12
