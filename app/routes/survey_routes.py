@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import require_admin_session, verify_csrf
 from app.bot_logic import start_survey_for_employee
 from app.database import get_db
+from app.focus_areas import FOCUS_AREAS, normalize_focus_slugs
 from app.models import AdminSession, Employee
 from app.telegram_client import TelegramClient
 from app.web import templates
@@ -64,6 +65,7 @@ async def start_survey_form(
             "admin": session.admin,
             "csrf_token": session.csrf_token,
             "employee": employee,
+            "focus_areas": FOCUS_AREAS,
         },
     )
 
@@ -71,6 +73,7 @@ async def start_survey_form(
 @router.post("/employees/{employee_id}/start-survey")
 async def start_survey_submit(
     employee_id: int,
+    request: Request,
     csrf_token: str = Form(...),
     total_questions: int = Form(3),
     custom_percent: int = Form(0),
@@ -87,6 +90,9 @@ async def start_survey_submit(
     total_questions = max(1, min(20, total_questions))
     custom_percent = max(0, min(100, custom_percent))
 
+    form = await request.form()
+    focus_slugs = normalize_focus_slugs(form.getlist("focus_areas"))
+
     customs = parse_questions_text(custom_questions_text)
     if custom_questions_file is not None and custom_questions_file.filename:
         customs.extend(parse_questions_csv(await custom_questions_file.read()))
@@ -100,5 +106,6 @@ async def start_survey_submit(
         total_questions=total_questions,
         custom_questions=customs,
         custom_percent=custom_percent,
+        focus_areas=focus_slugs,
     )
     return redirect_to(f"/admin/employees/{employee.id}", notice=message if ok else None, error=None if ok else message)

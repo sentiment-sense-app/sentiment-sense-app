@@ -9,6 +9,7 @@ from typing import Any
 from openai import AsyncOpenAI
 
 from app.config import settings
+from app.focus_areas import FOCUS_AREAS
 from app.models import Employee, Message
 
 
@@ -36,6 +37,7 @@ def build_system_prompt(
     custom_questions: list[str],
     turn_cap: int,
     force_finalize: bool = False,
+    focus_areas: list[str] | None = None,
 ) -> str:
     extra = max(0, turn_cap - total_questions)
     custom_block = ""
@@ -47,6 +49,7 @@ def build_system_prompt(
             f"the conversation. Do not skip them. Do not duplicate their topics in your "
             f"own follow-ups:\n{rendered}\n"
         )
+    focus_block = _build_focus_block(focus_areas or [])
     finalize_block = ""
     if force_finalize:
         finalize_block = (
@@ -76,6 +79,7 @@ def build_system_prompt(
         "MUST NOT contain a new question or any sentence ending in '?'. The system "
         "will send the survey-complete message right after your acknowledgement."
         f"{custom_block}"
+        f"{focus_block}"
         f"{finalize_block} "
         "Your goal is to capture how the employee feels about work, the main "
         "workplace concern, useful context for HR, and appropriate follow-up. "
@@ -105,6 +109,26 @@ def build_system_prompt(
         "any other concrete details. If the employee did not mention something, omit it "
         "rather than guess. Notable Quotes must be verbatim excerpts from the employee's "
         "messages, not paraphrased or fabricated."
+    )
+
+
+def _build_focus_block(focus_areas: list[str]) -> str:
+    entries = [(slug, FOCUS_AREAS[slug]) for slug in focus_areas if slug in FOCUS_AREAS]
+    if not entries:
+        return ""
+    sections = []
+    for _, entry in entries:
+        seeds = "\n".join(f"  - {q}" for q in entry["seed_questions"])
+        sections.append(f"- {entry['label']}: {entry['description']}\n{seeds}")
+    body = "\n".join(sections)
+    return (
+        "\nHR has selected the following focus area(s) for this survey. When you "
+        "generate your own follow-up questions, draw inspiration from these "
+        "examples — adapt them to the conversation, do not ask them verbatim, and "
+        "cover the selected areas roughly evenly. HR's custom questions (if any) "
+        "still take precedence and must be asked. If the employee raises a "
+        "different concern, follow up on that — do not force them back to a focus "
+        f"area.\n{body}\n"
     )
 
 
@@ -190,12 +214,13 @@ async def generate_bot_turn(
     total_questions: int,
     turn_cap: int,
     custom_questions: list[str] | None = None,
+    focus_areas: list[str] | None = None,
     force_finalize: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     client = _get_client()
     extra = max(0, turn_cap - total_questions)
     logger.info(
-        "LLM call start: model=%s turn=%d employee=%s budget=%d cap=%d extra=%d customs=%d finalize=%s",
+        "LLM call start: model=%s turn=%d employee=%s budget=%d cap=%d extra=%d customs=%d focus=%d finalize=%s",
         settings.openrouter_model,
         len(messages),
         employee.name,
@@ -203,6 +228,7 @@ async def generate_bot_turn(
         turn_cap,
         extra,
         len(custom_questions or []),
+        len(focus_areas or []),
         force_finalize,
     )
     started = time.perf_counter()
@@ -211,7 +237,7 @@ async def generate_bot_turn(
             model=settings.openrouter_model,
             response_format={"type": "json_object"},
             messages=[
-                {"role": "system", "content": build_system_prompt(total_questions, custom_questions or [], turn_cap, force_finalize)},
+                {"role": "system", "content": build_system_prompt(total_questions, custom_questions or [], turn_cap, force_finalize, focus_areas=focus_areas)},
                 {"role": "user", "content": build_conversation_context(employee, messages)},
             ],
         )

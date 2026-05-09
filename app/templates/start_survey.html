@@ -30,6 +30,31 @@
           </div>
 
           <div>
+            <label class="form-label d-block">Focus areas <span class="text-secondary fw-normal">· optional</span></label>
+            <div class="form-text mb-2">Steer the AI-generated questions toward one or more themes. Hover a chip to see example questions the bot will draw inspiration from. HR's custom questions take priority regardless.</div>
+            <div class="d-flex flex-wrap gap-2">
+              {% for slug, area in focus_areas.items() %}
+              {% set seeds_html %}
+              <div class='small text-secondary mb-1'>{{ area.description }}</div>
+              <ul class='small mb-0 ps-3'>
+                {% for q in area.seed_questions %}<li>{{ q }}</li>{% endfor %}
+              </ul>
+              {% endset %}
+              <input type="checkbox" class="btn-check" name="focus_areas" value="{{ slug }}" id="focus-{{ slug }}" autocomplete="off">
+              <label class="btn btn-outline-success btn-sm focus-chip"
+                     for="focus-{{ slug }}"
+                     tabindex="0"
+                     data-bs-toggle="popover"
+                     data-bs-trigger="hover focus"
+                     data-bs-placement="top"
+                     data-bs-html="true"
+                     data-bs-title="{{ area.label }}"
+                     data-bs-content="{{ seeds_html|e }}">{{ area.label }}</label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div>
             <label class="form-label">Custom questions</label>
             <div class="input-group mb-2">
               <input type="text" class="form-control" id="question-input" placeholder="Type a question and press Enter">

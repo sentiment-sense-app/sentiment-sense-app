@@ -9,6 +9,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.focus_areas import normalize_focus_slugs
 from app.llm import LLMError, generate_bot_turn
 from app.models import Employee, Message, OnboardingToken, Report, Survey, now_utc
 from app.telegram_client import TelegramAPIError, TelegramClient
@@ -157,6 +158,7 @@ async def start_survey_for_employee(
     total_questions: int = DEFAULT_TOTAL_QUESTIONS,
     custom_questions: list[str] | None = None,
     custom_percent: int = 0,
+    focus_areas: list[str] | None = None,
 ) -> tuple[bool, str]:
     existing = await active_survey_for_employee(db, employee.id)
     pending = await pending_survey_for_employee(db, employee.id)
@@ -169,6 +171,7 @@ async def start_survey_for_employee(
             db.add(prior)
 
     customs = pick_custom_questions(custom_questions or [], total_questions, custom_percent)
+    focus_slugs = normalize_focus_slugs(focus_areas)
     has_chat = bool(employee.telegram_chat_id)
     survey = Survey(
         employee_id=employee.id,
@@ -178,6 +181,7 @@ async def start_survey_for_employee(
         total_questions=total_questions,
         custom_percent=custom_percent,
         custom_questions_json=json.dumps(customs),
+        focus_areas_json=json.dumps(focus_slugs),
         turn_cap=compute_turn_cap(total_questions),
     )
     db.add(survey)
@@ -337,6 +341,7 @@ async def handle_employee_message(
     bot_turns = sum(1 for m in messages if m.direction == "bot")
     force_finalize = bot_turns >= survey.turn_cap
     customs = json.loads(survey.custom_questions_json or "[]")
+    focus_slugs = json.loads(survey.focus_areas_json or "[]")
 
     try:
         decision, usage = await generate_bot_turn(
@@ -345,6 +350,7 @@ async def handle_employee_message(
             total_questions=survey.total_questions,
             turn_cap=survey.turn_cap,
             custom_questions=customs,
+            focus_areas=focus_slugs,
             force_finalize=force_finalize,
         )
         survey.prompt_tokens += usage["prompt_tokens"]

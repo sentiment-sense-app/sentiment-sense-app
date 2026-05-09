@@ -91,6 +91,7 @@ class Survey(Base):
     total_questions: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
     custom_percent: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     custom_questions_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
+    focus_areas_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
     turn_cap: Mapped[int] = mapped_column(Integer, default=4, nullable=False)
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

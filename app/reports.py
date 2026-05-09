@@ -1,10 +1,12 @@
 import csv
 import io
+import json
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Report, sentiment_band
+from app.focus_areas import focus_labels
+from app.models import Report, Survey, sentiment_band
 
 
 REPORT_STATUSES = ["open", "reviewed", "resolved", "dismissed"]
@@ -15,10 +17,10 @@ def report_status_label(status: str) -> str:
 
 
 async def export_reports_csv(db: AsyncSession, status: str | None = None) -> str:
-    query = select(Report).order_by(Report.created_at.desc())
+    query = select(Report, Survey).join(Survey, Survey.id == Report.survey_id).order_by(Report.created_at.desc())
     if status:
         query = query.where(Report.status == status)
-    reports = (await db.execute(query)).scalars().all()
+    rows = (await db.execute(query)).all()
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -34,6 +36,7 @@ async def export_reports_csv(db: AsyncSession, status: str | None = None) -> str
             "phone",
             "sentiment_score",
             "sentiment_band",
+            "focus_areas",
             "report",
             "status",
             "hr_notes",
@@ -41,8 +44,12 @@ async def export_reports_csv(db: AsyncSession, status: str | None = None) -> str
             "updated_at",
         ]
     )
-    for report in reports:
+    for report, survey in rows:
         employee = report.employee
+        try:
+            focus_slugs = json.loads(survey.focus_areas_json or "[]")
+        except (ValueError, TypeError):
+            focus_slugs = []
         writer.writerow(
             [
                 report.id,
@@ -55,6 +62,7 @@ async def export_reports_csv(db: AsyncSession, status: str | None = None) -> str
                 employee.phone,
                 "" if report.sentiment_score is None else report.sentiment_score,
                 sentiment_band(report.sentiment_score) or "",
+                ", ".join(focus_labels(focus_slugs)),
                 report.report_markdown,
                 report.status,
                 report.hr_notes,

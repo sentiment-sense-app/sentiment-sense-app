@@ -56,7 +56,15 @@
         {% set survey = row.survey %}
         {% set report = row.report %}
         <tr>
-          <td class="fw-semibold">{{ survey.employee.name }}</td>
+          <td>
+            <div class="fw-semibold">{{ survey.employee.name }}</div>
+            {% set focus_labels_list = survey.focus_areas_json|focus_area_labels %}
+            {% if focus_labels_list %}
+            <div class="mt-1 d-flex flex-wrap gap-1">
+              {% for label in focus_labels_list %}<span class="badge text-bg-light border text-secondary fw-normal">{{ label }}</span>{% endfor %}
+            </div>
+            {% endif %}
+          </td>
           <td>{{ survey.employee.department }}</td>
           <td>{{ survey.employee.project }}</td>
           <td><span class="badge text-bg-secondary">{{ survey.status|survey_status_label }}</span></td>

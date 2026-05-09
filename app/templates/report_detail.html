@@ -13,6 +13,13 @@
     {% endif %}
   </div>
   <p class="text-secondary mb-1">{{ report.employee.name }} · {{ report.employee.department }} · {{ report.employee.project }}</p>
+  {% set focus_labels_list = (survey.focus_areas_json if survey else "")|focus_area_labels %}
+  {% if focus_labels_list %}
+  <div class="d-flex flex-wrap gap-1 mb-1">
+    <span class="text-secondary small me-1">Focus:</span>
+    {% for label in focus_labels_list %}<span class="badge text-bg-light border text-secondary fw-normal">{{ label }}</span>{% endfor %}
+  </div>
+  {% endif %}
   {% if survey and (survey.prompt_tokens or survey.completion_tokens or survey.cost_usd) %}
   <p class="text-secondary small mb-0">AI usage: input {{ survey.prompt_tokens }} · output {{ survey.completion_tokens }} · cost ${{ '%.6f'|format(survey.cost_usd) }}</p>
   {% endif %}
