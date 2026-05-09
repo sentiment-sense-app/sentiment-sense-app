@@ -150,6 +150,7 @@ def build_conversation_context(employee: Employee, messages: list[Message]) -> s
 
 
 _FENCE_RE = re.compile(r"^\s*```(?:md|markdown)?\s*\n(.*?)\n?\s*```\s*$", re.DOTALL | re.IGNORECASE)
+_JSON_FENCE_RE = re.compile(r"```(?:json)?\s*\n?(.*?)\n?\s*```", re.DOTALL | re.IGNORECASE)
 
 
 def strip_markdown_fence(text: str) -> str:
@@ -157,10 +158,24 @@ def strip_markdown_fence(text: str) -> str:
     return match.group(1).strip() if match else text.strip()
 
 
+def _extract_json_payload(content: str) -> str:
+    text = content.strip()
+    fence = _JSON_FENCE_RE.search(text)
+    if fence:
+        text = fence.group(1).strip()
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        return text[start : end + 1]
+    return text
+
+
 def parse_llm_json(content: str) -> dict[str, Any]:
+    payload = _extract_json_payload(content)
     try:
-        parsed = json.loads(content)
+        parsed = json.loads(payload)
     except json.JSONDecodeError as exc:
+        logger.warning("LLM JSON parse failed: %s | raw=%r", exc, content[:500])
         raise LLMError("LLM returned invalid JSON") from exc
 
     if not isinstance(parsed, dict):
