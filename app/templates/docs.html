@@ -115,12 +115,14 @@
     <section id="reports" class="card border-0 shadow-sm mb-4">
       <div class="card-body">
         <h2 class="h4 mb-3">Reports</h2>
-        <p>Each completed survey produces a Markdown report with these sections: Summary, Sentiment, Key Themes, Notable Quotes, Suggested Follow-up.</p>
+        <p>Each completed survey produces a Markdown report with these sections: Summary, Sentiment, Key Themes, Notable Quotes, Suggested Follow-up. The LLM also returns a 0–100 sentiment score on the same finalize turn.</p>
         <ul class="mb-0">
+          <li><strong>Sentiment band.</strong> The score maps to a colored pill: <span class="badge text-bg-danger">Red</span> (0–39, attend to soon), <span class="badge text-bg-warning">Yellow</span> (40–69, worth a check-in), <span class="badge text-bg-success">Green</span> (70–100, healthy). Shown on the dashboard Sentiment column and at the top of the report detail page. Use the Sort → <em>Priority (Red first)</em> dropdown on the dashboard to triage.</li>
           <li>View by clicking <strong>View report</strong> on any dashboard row that has one. Pending/active surveys show a dash.</li>
           <li>Reports have their own status — <em>Open</em> (default), <em>Reviewed</em>, <em>Resolved</em>, <em>Dismissed</em>. Update from the report detail page along with HR notes.</li>
-          <li>Export all reports (with employee context) via the <strong>Export CSV</strong> button on the dashboard.</li>
+          <li>Export all reports (with employee context, sentiment score and band) via the <strong>Export CSV</strong> button on the dashboard.</li>
           <li>The report and the full message transcript are both visible on the report detail page.</li>
+          <li>Placeholder reports (saved when finalize errors out) have no score — the pill shows "Sentiment unknown" so you know to review the transcript manually.</li>
         </ul>
       </div>
     </section>

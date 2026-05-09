@@ -19,7 +19,7 @@ Fill in `.env`:
 ```env
 SECRET_KEY=...                       # python -c 'import secrets; print(secrets.token_hex(32))'
 OPENROUTER_KEY=sk-or-...
-OPENROUTER_MODEL=deepseek/deepseek-v4-flash   # optional, defaults to deepseek/deepseek-v4-pro
+OPENROUTER_MODEL=anthropic/claude-sonnet-4.6  # optional, defaults to anthropic/claude-sonnet-4.6
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=admin123
 TELEGRAM_BOT_TOKEN=                  # from @BotFather
@@ -41,8 +41,8 @@ Open http://localhost:8000. Admin user is seeded from `ADMIN_EMAIL` / `ADMIN_PAS
 2. Each employee gets a personalized Telegram deep link `https://t.me/<bot>?start=<token>`.
 3. Admin clicks **Send survey** on the employees page → form for total questions, % from custom list (manual textarea or CSV upload). If the employee is already connected on Telegram, the first question is sent immediately. If not, the survey is queued.
 4. Admin sends the deep link to the employee out-of-band. Employee opens it and presses Start; the bot stores their `chat_id`. If a queued survey is waiting, it activates and the first question goes out right away — otherwise the bot just confirms they're connected and waits for HR.
-5. Employee replies on Telegram. The LLM asks follow-ups up to the question budget; the bot allows up to 20% extra turns for tactful follow-ups before force-finalizing. When the survey ends, an HR-facing Markdown report is saved and a "survey complete" message is sent to the employee.
-6. Admin reviews surveys on the dashboard (grouped by employee), marks them `open` / `reviewed` / `resolved` / `dismissed`, and exports CSV.
+5. Employee replies on Telegram. The LLM asks follow-ups up to the question budget; the bot allows up to 20% extra turns for tactful follow-ups before force-finalizing. When the survey ends, an HR-facing Markdown report is saved with a 0–100 sentiment score (Red / Yellow / Green band) and a "survey complete" message is sent to the employee.
+6. Admin reviews surveys on the dashboard (grouped by employee, sortable by Priority so reds float to the top), marks them `open` / `reviewed` / `resolved` / `dismissed`, and exports CSV.
 
 ## Bot Commands
 
