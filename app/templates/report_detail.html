@@ -1,16 +1,36 @@
 {% extends "base.html" %}
 {% block title %}Report #{{ report.id }} · Sentiment Sense{% endblock %}
 {% block content %}
+{% if report.sentiment_score is not none %}
+{% set band = report.sentiment_score|sentiment_band %}
+{% else %}
+{% set band = none %}
+{% endif %}
+{% set band_class = {'red': 'text-bg-danger', 'yellow': 'text-bg-warning', 'green': 'text-bg-success'}.get(band, 'text-bg-secondary') %}
+
 <div class="mb-4">
   <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
     <h1 class="h2 mb-0">Report #{{ report.id }}</h1>
-    {% if report.sentiment_score is not none %}
-    {% set band = report.sentiment_score|sentiment_band %}
-    {% set band_class = {'red': 'text-bg-danger', 'yellow': 'text-bg-warning', 'green': 'text-bg-success'}.get(band, 'text-bg-secondary') %}
+    {% if band %}
     <span class="badge {{ band_class }} fs-6">{{ band|capitalize }} · {{ report.sentiment_score }}/100</span>
     {% else %}
     <span class="badge text-bg-secondary fs-6">Sentiment unknown</span>
     {% endif %}
+    {% if report.status == "open" and band == "red" %}
+    <span class="badge text-bg-danger-subtle text-danger border border-danger-subtle fs-6">⚠ Needs action</span>
+    {% endif %}
+    <div class="ms-auto">
+      {% if report.status != "resolved" %}
+      <form method="post" action="/admin/surveys/{{ report.id }}" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="status" value="resolved">
+        <input type="hidden" name="hr_notes" value="{{ report.hr_notes }}">
+        <button type="submit" class="btn btn-success btn-sm">✓ Mark resolved</button>
+      </form>
+      {% else %}
+      <span class="badge text-bg-success fs-6">✓ Resolved</span>
+      {% endif %}
+    </div>
   </div>
   <p class="text-secondary mb-1">{{ report.employee.name }} · {{ report.employee.department }} · {{ report.employee.project }}</p>
   {% set focus_labels_list = (survey.focus_areas_json if survey else "")|focus_area_labels %}
@@ -45,15 +65,24 @@
     <div class="card border-0 shadow-sm h-100">
       <div class="card-body">
     <h2 class="h5 mb-3">Status Controls</h2>
+    {% set status_styles = {
+      'open': 'btn-outline-danger',
+      'reviewed': 'btn-outline-primary',
+      'resolved': 'btn-outline-success',
+      'dismissed': 'btn-outline-secondary',
+    } %}
     <form method="post" action="/admin/surveys/{{ report.id }}" class="vstack gap-3">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <div>
         <label class="form-label">Status</label>
-        <select class="form-select" name="status">
+        <div class="d-flex flex-wrap gap-2" role="group" aria-label="Report status">
           {% for status in report_statuses %}
-          <option value="{{ status }}" {% if report.status == status %}selected{% endif %}>{{ status|report_status_label }}</option>
+          <input type="radio" class="btn-check" name="status" value="{{ status }}"
+                 id="status-{{ status }}" autocomplete="off"
+                 {% if report.status == status %}checked{% endif %}>
+          <label class="btn {{ status_styles.get(status, 'btn-outline-secondary') }} btn-sm" for="status-{{ status }}">{{ status|report_status_label }}</label>
           {% endfor %}
-        </select>
+        </div>
       </div>
       <div>
         <label class="form-label">HR notes</label>
