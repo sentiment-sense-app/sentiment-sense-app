@@ -19,18 +19,6 @@
     {% if report.status == "open" and band == "red" %}
     <span class="badge text-bg-danger-subtle text-danger border border-danger-subtle fs-6">⚠ Needs action</span>
     {% endif %}
-    <div class="ms-auto">
-      {% if report.status != "resolved" %}
-      <form method="post" action="/admin/surveys/{{ report.id }}" class="d-inline">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="hidden" name="status" value="resolved">
-        <input type="hidden" name="hr_notes" value="{{ report.hr_notes }}">
-        <button type="submit" class="btn btn-success btn-sm">✓ Mark resolved</button>
-      </form>
-      {% else %}
-      <span class="badge text-bg-success fs-6">✓ Resolved</span>
-      {% endif %}
-    </div>
   </div>
   <p class="text-secondary mb-1">{{ report.employee.name }} · {{ report.employee.department }} · {{ report.employee.project }}</p>
   {% set focus_labels_list = (survey.focus_areas_json if survey else "")|focus_area_labels %}
